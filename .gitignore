@@ -1,3 +1,14 @@
+# macOS / editor junk
+.DS_Store
+**/.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Vite
+.vite
+
 # Logs
 logs
 *.log
