@@ -1,0 +1,20 @@
+# =============================================================================
+# Production security headers for static hosts that understand _headers
+# (Netlify, Cloudflare Pages). Vercel reads vercel.json instead — keep the
+# policy there in sync with this file.
+# =============================================================================
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://www.youtube-nocookie.com https://s.ytimg.com https://www.instagram.com https://*.instagram.com https://player.vimeo.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.youtube.com https://player.vimeo.com https://*.vimeo.com https://www.instagram.com https://*.instagram.com; connect-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  X-DNS-Prefetch-Control: on
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-site
+
+# Long-cache hashed build assets — Vite fingerprints JS/CSS filenames.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

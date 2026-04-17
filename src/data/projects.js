@@ -1,0 +1,288 @@
+/* ============================================================================
+   🎬  AMPHITHEATRE FILM — CONTENT
+   ============================================================================
+   Maintained by the in-browser Editor (click the pencil in the sidebar).
+   You can also hand-edit the sections below; the Editor picks up changes on
+   the next reload. Don't touch the helpers / legacy exports near the bottom.
+   ============================================================================ */
+
+
+/* ── 1. PROFILE ──────────────────────────────────────────────────────────── */
+
+export const PROFILE = {
+  photo:            "https://lh3.googleusercontent.com/d/1YFbaxWDiggjQNeuv0q1fOgkvL8vpJiph=w800",
+  name:             "Amphitheatre Film",
+  role:             "Director / Cinematographer",
+  tagline:          "With kindness, respect and mindful.",
+  taglineEmphasis:  "kindness",
+  // Browser-tab title (shown in the window/tab) and favicon URL.
+  siteTitle:        "Amphitheatre Film — Cinematic Storytelling",
+  favicon:          "/favicon.svg",
+  // Optional hero / showreel video at the top of the page. Accepts any
+  // YouTube, Vimeo, or Instagram URL. Leave empty to hide the hero.
+  featuredVideo:      "",
+  featuredVideoTitle: "",
+  featuredVideoPoster:"", // optional custom poster image
+};
+
+
+/* ── 2. CONTACT ──────────────────────────────────────────────────────────── */
+
+export const CONTACT = {
+  email:     "hello@amphitheatrefilm.com",
+  instagram: "https://instagram.com/amphitheatrefilm",
+  facebook:  "https://facebook.com/amphitheatrefilm",
+  linktree:  "https://linktr.ee/amphitheatrefilm",
+};
+
+
+/* ── 3. BACKGROUND ───────────────────────────────────────────────────────── */
+
+export const BACKGROUND = {
+  color:   "#000000",
+  image:   null,
+  overlay: "rgba(5,5,7,0.7)",
+};
+
+
+/* ── 4. TOPICS & PROJECTS ────────────────────────────────────────────────── */
+
+export const TOPICS = [
+
+  topic("Short Commercials", [
+    project({
+      title:    "Emporio Armani — Power Of You",
+      subtitle: "ft. Namtan Tipnaree",
+      url:      "https://www.instagram.com/p/DWoLO3_DLvt",
+    }),
+    project({
+      title:    "GATSBY CrazyCool",
+      subtitle: "ft. Top Todsapol",
+      url:      "https://www.instagram.com/p/DWYq0DgDRAM",
+    }),
+    project({
+      title:    "Emporio Armani — Stronger With You",
+      subtitle: "ft. Jeff Satur",
+      url:      "https://www.instagram.com/p/DJY6UTVy58v",
+    }),
+    project({
+      title:    "Bifesta",
+      subtitle: "ft. Nene Pornnappan",
+      url:      "https://www.instagram.com/p/DQ9Hq-mAthv",
+    }),
+    project({
+      title:    "G.H. Mumm — Not Your Typical Location",
+      subtitle: "Brand Film",
+      url:      "https://www.instagram.com/reel/DIQOheXTCOk/",
+    }),
+    project({
+      title:    "G.H. Mumm — Not Your Typical Party",
+      subtitle: "Brand Film",
+      url:      "https://www.instagram.com/reel/DD6x5DRTr1L/",
+    }),
+  ]),
+
+  topic("MV, Live Session & Short Film", [
+    project({
+      title:    "เติมเธอ (Fill My Heart) — KRIST",
+      subtitle: "2nd DOP · Live Session",
+      url:      "https://youtu.be/TQi8-llNlVA",
+    }),
+    project({
+      title:    "ด้านชา (NUMB) — KRIST × PERTH",
+      subtitle: "2nd DOP · Live Session",
+      url:      "https://youtu.be/dnUlktGlRTM",
+    }),
+    project({
+      title:    "รักเอย (Who Are U?) — JACKIE JACKRIN",
+      subtitle: "Music Video",
+      url:      "https://www.youtube.com/watch?v=jy7JH1ZWTyE",
+    }),
+    project({
+      title:    "Top Secret Mission",
+      subtitle: "Mission Impossibamm Concert",
+      url:      "https://www.youtube.com/watch?v=KngMs8qbGIo",
+    }),
+    project({
+      title:    "Fly To The Moon Festival 23/24",
+      subtitle: "Aftermovie",
+      url:      "https://www.youtube.com/watch?v=9smuS4nlZj4",
+    }),
+    project({
+      title:    "Fly To The Moon Festival 2021",
+      subtitle: "Aftermovie",
+      url:      "https://www.youtube.com/watch?v=1ZK4zGoFA_4",
+    }),
+    project({
+      title:    "The Melting Faith",
+      subtitle: "Young Thai Artist Award 2022",
+      url:      "https://www.youtube.com/watch?v=nnLjS8lcY80",
+    }),
+  ]),
+
+  topic("Fashion Film", [
+    project({
+      title:    "Louis Vuitton — Fall/Summer 2025",
+      subtitle: "/w BamBam",
+      url:      "https://www.instagram.com/reel/DGx4WxHz_dH/",
+    }),
+    project({
+      title:    "Gucci — La Famiglia",
+      subtitle: "/w Janeyae & Billkin",
+      url:      "https://www.instagram.com/reel/DUcNqBGk1BG",
+    }),
+    project({
+      title:    "Chaumet",
+      subtitle: "ft. Bow Maylada",
+      url:      "https://www.instagram.com/p/DR01-qYE24E",
+    }),
+    project({
+      title:    "Bottega Veneta — Summer 2025",
+      subtitle: "ft. Thanaerng Kanyawee",
+      url:      "https://www.instagram.com/reel/DScU0v1Ewfx",
+    }),
+    project({
+      title:    "Gucci — Fall/Winter 2025",
+      subtitle: "/w Jay Park",
+      url:      "https://www.instagram.com/reel/DOAcN-uEzAx",
+    }),
+    project({
+      title:    "Onitsuka Tiger — October 25",
+      subtitle: "/w Baifern & Gulf",
+      url:      "https://www.instagram.com/reel/DQDjBWsE1ol/",
+    }),
+    project({
+      title:    "Tiffany & Co.",
+      subtitle: "/w Metawin",
+      url:      "https://www.instagram.com/reel/DDOCkuEzjXv/",
+    }),
+    project({
+      title:    "ASICS — Fall/Winter 25",
+      subtitle: "/w Sky Wongravee",
+      url:      "https://www.instagram.com/reel/DPBdM_tk6Nc/",
+    }),
+    project({
+      title:    "Mikimoto — High Jewelry",
+      subtitle: "/w Jarinporn",
+      url:      "https://www.instagram.com/reel/DBSxCMjTlSu/",
+    }),
+    project({
+      title:    "Balenciaga — Fall Collection 2025",
+      subtitle: "/w PP Krit",
+      url:      "https://www.instagram.com/reel/DKhEQDbzYfD/",
+    }),
+    project({
+      title:    "Dior — Cruise 2025",
+      subtitle: "/w Kimberley",
+      url:      "https://www.instagram.com/reel/DDLyVpbTNFP/",
+    }),
+    project({
+      title:    "OMEGA Seamaster",
+      subtitle: "ft. Jame Jirayu",
+      url:      "https://www.instagram.com/p/DRYhKyaEzll",
+    }),
+    project({
+      title:    "Seiko Diver's Watch 60th Anniversary",
+      subtitle: "/w Jee Sutthirak",
+      url:      "https://www.instagram.com/reel/DKhFklszx_6/",
+    }),
+    project({
+      title:    "Saint Laurent — Fashion Video",
+      subtitle: "/w Pemmwasu",
+      url:      "https://www.instagram.com/reels/DIBa9H0TuoA",
+    }),
+    project({
+      title:    "Bvlgari",
+      subtitle: "/w Mile Pakpoom",
+      url:      "https://www.instagram.com/reel/DFopCQZhHE6/",
+    }),
+  ]),
+
+  topic("Online Content", [
+    project({
+      title:    "Volvo ES90 × Esquire Thailand",
+      subtitle: "Brand Content",
+      url:      "https://www.instagram.com/reel/DW0IldDhC02",
+    }),
+    project({
+      title:    "Plantae — แห่ Run หมาก",
+      subtitle: "Cinematographer",
+      url:      "https://www.instagram.com/p/DUfxPFHEtLp",
+    }),
+    project({
+      title:    "BLEU DE CHANEL — L’EXCLUSIF",
+      subtitle: "APEC Interview",
+      url:      "https://www.instagram.com/reel/DN5eWJwE1Gb",
+    }),
+    project({
+      title:    "ONE's Perfect Pair",
+      subtitle: "/w Jamy James at One Bangkok",
+      url:      "https://www.instagram.com/reel/DKPC7R-zKah/",
+    }),
+  ]),
+
+];
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Helpers & legacy exports — do not edit by hand.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function topic(label, items) {
+  const id = slug(label);
+  return {
+    id,
+    label,
+    projects: items.map((p, i) => ({ ...p, id: `${id}-${i + 1}` })),
+  };
+}
+
+function project({ title, subtitle = '', url, image = '', imagePosition = '50% 50%' }) {
+  return {
+    title,
+    subtitle,
+    url,
+    thumbnail: image || autoThumbnail(url),
+    imagePosition,
+  };
+}
+
+function autoThumbnail(url) {
+  const yt = String(url || '').match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/
+  );
+  if (yt) return `https://img.youtube.com/vi/${yt[1]}/maxresdefault.jpg`;
+  return 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1600&auto=format&fit=crop';
+}
+
+function slug(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'topic';
+}
+
+export const BRAND = {
+  name:    PROFILE.name,
+  role:    PROFILE.role,
+  tagline: PROFILE.tagline,
+  email:   CONTACT.email,
+  socials: {
+    instagram: CONTACT.instagram,
+    facebook:  CONTACT.facebook,
+    linktree:  CONTACT.linktree,
+  },
+};
+
+export const SITE_ASSETS = {
+  headerImage: PROFILE.photo,
+  headerImageShape: 'square',
+  background: BACKGROUND,
+};
+
+export const CATEGORIES = TOPICS;
+
+export const ALL_PROJECTS = CATEGORIES.flatMap((c) =>
+  c.projects.map((p) => ({ ...p, categoryId: c.id, categoryLabel: c.label }))
+);
