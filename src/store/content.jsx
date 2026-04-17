@@ -424,7 +424,7 @@ export async function saveProjectsJs(source) {
     });
     if (res.status === 404) return { ok: false, notSupported: true };
     const data = await res.json().catch(() => ({}));
-    if (res.ok && data.ok) return { ok: true, bytes: data.bytes };
+    if (res.ok && data.ok) return { ok: true, bytes: data.bytes, git: data.git };
     return { ok: false, error: data.error || `HTTP ${res.status}` };
   } catch (e) {
     return { ok: false, notSupported: true, error: String(e?.message || e) };

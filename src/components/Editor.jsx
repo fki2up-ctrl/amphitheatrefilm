@@ -51,15 +51,18 @@ export default function Editor({ open, onClose }) {
   const [saveError, setSaveError] = useState('');
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [gitInfo, setGitInfo] = useState(null);
 
   const doSave = async () => {
     setSaveStatus('saving');
     setSaveError('');
+    setGitInfo(null);
     const source = serializeToProjectsJs(c.state);
     const result = await saveProjectsJs(source);
     if (result.ok) {
       setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2200);
+      setGitInfo(result.git || null);
+      setTimeout(() => setSaveStatus('idle'), 3200);
     } else if (result.notSupported) {
       // Production build (no dev endpoint) — fall back to Export modal.
       setSaveStatus('unsupported');
@@ -71,7 +74,9 @@ export default function Editor({ open, onClose }) {
     }
   };
 
-  const handleSave = () => setConfirmOpen(true);
+  // Save writes directly to src/data/projects.js via the dev endpoint.
+  // No password re-prompt — the editor is already unlocked.
+  const handleSave = () => doSave();
   const [unlocked, setUnlocked] = useState(() => {
     try {
       return sessionStorage.getItem(UNLOCK_KEY) === '1';
@@ -147,11 +152,14 @@ export default function Editor({ open, onClose }) {
                   <TopicsSection c={c} />
 
                   <p className="pt-4 text-[11px] text-white/40 leading-relaxed">
-                    Changes save to your browser automatically. Click{' '}
-                    <span className="text-white/70">Export</span> below to get
-                    the code you can paste into{' '}
+                    Edits preview live and persist in your browser. Click{' '}
+                    <span className="text-white/70">Save</span> to write them
+                    directly to{' '}
                     <code className="text-white/60">src/data/projects.js</code>
-                    {' '}to make them permanent for everyone.
+                    {' '}— no copy-paste needed.{' '}
+                    <span className="text-white/70">Export</span> is only for
+                    when you need the raw source (e.g. to paste on a machine
+                    without the dev server).
                   </p>
                 </div>
 
@@ -205,6 +213,33 @@ export default function Editor({ open, onClose }) {
                 {saveStatus === 'error' && saveError && (
                   <div className="px-5 py-2 bg-red-500/10 border-t border-red-500/20 text-[11px] text-red-200/90">
                     {saveError}
+                  </div>
+                )}
+                {gitInfo && (
+                  <div
+                    className={`px-5 py-2 border-t text-[11px] leading-snug ${
+                      gitInfo.pushed
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200/90'
+                        : gitInfo.error
+                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-200/90'
+                        : 'bg-white/5 border-white/10 text-white/60'
+                    }`}
+                  >
+                    {gitInfo.pushed ? (
+                      <>
+                        <span className="font-medium">✓ Synced to GitHub</span>
+                        {' — '}
+                        {gitInfo.message}
+                      </>
+                    ) : gitInfo.error ? (
+                      <>
+                        <span className="font-medium">⚠ GitHub push failed</span>
+                        {' — '}
+                        <span className="text-amber-200/75">{gitInfo.error}</span>
+                      </>
+                    ) : (
+                      <span className="text-white/60">{gitInfo.message}</span>
+                    )}
                   </div>
                 )}
               </>

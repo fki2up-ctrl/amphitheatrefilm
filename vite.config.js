@@ -2,12 +2,72 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const execFileP = promisify(execFile);
 
-// Dev-only endpoint the Editor hits to persist changes back to disk.
-// Writes the POST body to src/data/projects.js. Disabled in production builds.
+// Run `git add/commit/push` for the given file. Returns { pushed, message,
+// error? }. Silently disabled if AMPHITHEATRE_GIT_SYNC=0 or the working tree
+// isn't inside a git repo. Relies on the machine's configured git credentials
+// (here: GitHub CLI helper) so pushes are non-interactive.
+async function gitSync(filePath, cwd) {
+  if (process.env.AMPHITHEATRE_GIT_SYNC === '0') {
+    return { pushed: false, message: 'Git sync disabled (env flag).' };
+  }
+  try {
+    // Only act if we're inside a repo.
+    await execFileP('git', ['rev-parse', '--is-inside-work-tree'], { cwd });
+
+    await execFileP('git', ['add', filePath], { cwd });
+
+    // Skip if the working-tree change was actually a no-op.
+    const { stdout: porcelain } = await execFileP(
+      'git',
+      ['status', '--porcelain', filePath],
+      { cwd }
+    );
+    if (!porcelain.trim()) {
+      return { pushed: false, message: 'No changes to commit.' };
+    }
+
+    const timestamp = new Date()
+      .toISOString()
+      .replace('T', ' ')
+      .slice(0, 16);
+    await execFileP(
+      'git',
+      ['commit', '-m', `Content update via editor — ${timestamp}`],
+      { cwd }
+    );
+
+    // Push to the currently-tracked upstream. If no upstream is set this will
+    // fail — that's fine, we surface the error to the editor UI.
+    const { stdout: pushOut, stderr: pushErr } = await execFileP(
+      'git',
+      ['push'],
+      { cwd }
+    );
+    return {
+      pushed: true,
+      message: `Committed & pushed at ${timestamp}`,
+      detail: (pushErr || pushOut || '').trim().split('\n').slice(-1)[0] || '',
+    };
+  } catch (e) {
+    return {
+      pushed: false,
+      error:
+        (e?.stderr && String(e.stderr).trim()) ||
+        e?.message ||
+        String(e),
+    };
+  }
+}
+
+// Dev-only endpoint the Editor hits to persist changes back to disk, then
+// auto-commit + push to GitHub. Disabled in production builds.
 function contentSaverPlugin() {
   const TARGET = path.resolve(__dirname, 'src/data/projects.js');
   const MAX_BYTES = 2_000_000; // sanity limit
@@ -27,13 +87,22 @@ function contentSaverPlugin() {
             chunks.push(chunk);
           }
           const body = Buffer.concat(chunks).toString('utf8');
-          if (!body.includes('export const PROFILE')) {
+          // Stricter guard — require both top-level markers so we never
+          // accept a half-formed payload that would blank the file.
+          if (
+            !body.includes('export const PROFILE') ||
+            !body.includes('export const TOPICS')
+          ) {
             throw new Error('Payload does not look like a projects.js file');
           }
           fs.writeFileSync(TARGET, body, 'utf8');
+
+          // Then try to auto-push to GitHub.
+          const git = await gitSync(TARGET, __dirname);
+
           res.statusCode = 200;
           res.setHeader('content-type', 'application/json');
-          res.end(JSON.stringify({ ok: true, bytes: body.length }));
+          res.end(JSON.stringify({ ok: true, bytes: body.length, git }));
         } catch (e) {
           res.statusCode = 500;
           res.setHeader('content-type', 'application/json');
