@@ -125,11 +125,14 @@ export const TOPICS = [
       title:    "Louis Vuitton — Fall/Summer 2025",
       subtitle: "/w BamBam",
       url:      "https://www.instagram.com/reel/DGx4WxHz_dH/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528821/Screenshot_2569-04-18_at_23.08.41_ujcpei.png",
+      imagePosition: "51% 64%",
     }),
     project({
       title:    "Gucci — La Famiglia",
       subtitle: "/w Janeyae & Billkin",
       url:      "https://www.instagram.com/reel/DUcNqBGk1BG",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528797/Screenshot_2569-04-18_at_23.03.17_dnyerk.png",
     }),
     project({
       title:    "Chaumet",
@@ -162,6 +165,8 @@ export const TOPICS = [
       title:    "Tiffany & Co.",
       subtitle: "/w Metawin",
       url:      "https://www.instagram.com/reel/DDOCkuEzjXv/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528900/Screenshot_2569-04-18_at_23.12.42_ojrj2c.png",
+      imagePosition: "49% 17%",
     }),
     project({
       title:    "ASICS — Fall/Winter 25",
@@ -174,6 +179,8 @@ export const TOPICS = [
       title:    "Mikimoto — High Jewelry",
       subtitle: "/w Jarinporn",
       url:      "https://www.instagram.com/reel/DBSxCMjTlSu/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528876/Screenshot_2569-04-18_at_23.11.42_jv1vm0.png",
+      imagePosition: "51% 59%",
     }),
     project({
       title:    "Balenciaga — Fall Collection 2025",
@@ -186,6 +193,7 @@ export const TOPICS = [
       title:    "Dior — Cruise 2025",
       subtitle: "/w Kimberley",
       url:      "https://www.instagram.com/reel/DDLyVpbTNFP/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528856/Screenshot_2569-04-18_at_23.09.10_bnfle3.png",
     }),
     project({
       title:    "OMEGA Seamaster",
@@ -198,6 +206,8 @@ export const TOPICS = [
       title:    "Seiko Diver's Watch 60th Anniversary",
       subtitle: "/w Jee Sutthirak",
       url:      "https://www.instagram.com/reel/DKhFklszx_6/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528801/Screenshot_2569-04-18_at_23.06.57_pz6i0t.png",
+      imagePosition: "33% 20%",
     }),
     project({
       title:    "Saint Laurent — Fashion Video",
