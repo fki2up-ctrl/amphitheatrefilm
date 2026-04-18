@@ -56,6 +56,8 @@ export const TOPICS = [
       title:    "GATSBY CrazyCool",
       subtitle: "ft. Top Todsapol",
       url:      "https://www.instagram.com/p/DWYq0DgDRAM",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776525692/Screenshot_2569-04-18_at_22.21.11_trg8ie.png",
+      imagePosition: "49% 15%",
     }),
     project({
       title:    "Emporio Armani — Stronger With You",
