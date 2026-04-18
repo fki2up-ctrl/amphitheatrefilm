@@ -8,7 +8,7 @@ export default function ProjectGrid({ onOpen }) {
   const { CATEGORIES } = useContent();
   return (
     <div className="space-y-20 sm:space-y-28">
-      {CATEGORIES.map((cat, ci) => (
+      {CATEGORIES.map((cat) => (
         <section
           key={cat.id}
           id={cat.id}

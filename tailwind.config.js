@@ -13,10 +13,11 @@ export default {
         },
       },
       fontFamily: {
-        // DM Sans is the single typeface used across the entire site
-        // (Google Fonts, open licensed). No proprietary fonts.
+        // DM Sans is the primary UI typeface across the entire site.
         sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         display: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Handwritten brand signature — used once in the intro sequence.
+        hand: ['"Caveat"', 'ui-serif', 'cursive'],
       },
       letterSpacing: {
         widest2: '0.3em',

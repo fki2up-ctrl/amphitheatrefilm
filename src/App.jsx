@@ -7,6 +7,8 @@ import VideoModal from './components/VideoModal';
 import useActiveSection from './hooks/useActiveSection';
 import { useContent } from './store/content';
 import Editor from './components/Editor';
+import Intro from './components/Intro';
+import StaticGrainOverlay from './components/StaticGrainOverlay';
 
 export default function App() {
   const { CATEGORIES, ALL_PROJECTS, SITE_ASSETS, PROFILE } = useContent();
@@ -120,8 +122,16 @@ export default function App() {
         </div>
       </main>
 
+      {/* Subtle film-grain overlay — opacity rises with scroll. Sits above
+          the background but below the main content. */}
+      <StaticGrainOverlay />
+
       <VideoModal project={openProject} onClose={() => setOpenProject(null)} />
       <Editor open={editorOpen} onClose={() => setEditorOpen(false)} />
+
+      {/* Cinematic 3-phase intro. Plays once per session, locks scroll while
+          on screen, then unmounts via AnimatePresence. */}
+      <Intro />
     </div>
   );
 }

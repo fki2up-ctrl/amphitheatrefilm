@@ -10,13 +10,13 @@
 /* ── 1. PROFILE ──────────────────────────────────────────────────────────── */
 
 export const PROFILE = {
-  photo:               "https://lh3.googleusercontent.com/d/1YFbaxWDiggjQNeuv0q1fOgkvL8vpJiph=w800",
+  photo:               "/profile.jpg",
   name:                "Film Natthawut",
   role:                "Director / Cinematographer",
   tagline:             "I'm wishing to be a light painter",
   taglineEmphasis:     "light painter",
   siteTitle:           "Film Natthawut - Portfolio",
-  favicon:             "/favicon.svg",
+  favicon:             "/icons/favicon-32.png",
   featuredVideo:       "",
   featuredVideoTitle:  "",
   featuredVideoPoster: "",

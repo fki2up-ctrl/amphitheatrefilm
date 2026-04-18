@@ -39,3 +39,29 @@ body {
 /* Hide scrollbar but keep horizontal scroll — used by the mobile nav pills. */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* ---------------------------------------------------------------------------
+   Intro sequence — "light leak" shimmer that sweeps across the brand name.
+   Uses background-clip:text to keep the effect contained to the glyphs.
+--------------------------------------------------------------------------- */
+@keyframes intro-shimmer {
+  0%   { background-position: -150% 0; }
+  100% { background-position:  250% 0; }
+}
+.intro-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.35) 38%,
+    rgba(255, 245, 220, 1)    48%,
+    rgba(255, 255, 255, 0.9)  54%,
+    rgba(255, 255, 255, 0.35) 64%,
+    rgba(255, 255, 255, 0.35) 100%
+  );
+  background-size: 220% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: intro-shimmer 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s 1 both;
+}
