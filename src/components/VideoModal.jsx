@@ -92,10 +92,6 @@ export default function VideoModal({ project, onClose }) {
             }}
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-6xl"
-            style={{
-              maxHeight: '85vh',
-              willChange: 'transform, filter, opacity',
-            }}
           >
             <PlayerFrame info={info} title={project.title} />
             {info.kind === 'unknown' && (
@@ -125,8 +121,13 @@ function PlayerFrame({ info, title }) {
   if (info.kind === 'instagram') {
     return (
       <div
-        className="mx-auto w-full max-w-[480px] bg-white rounded-xl overflow-hidden shadow-2xl"
-        style={{ aspectRatio: '9 / 16', maxHeight: '85vh' }}
+        className="mx-auto bg-white rounded-xl overflow-hidden shadow-2xl"
+        style={{
+          aspectRatio: '9 / 16',
+          // Honour aspect ratio: width is either the natural 9:16 of available
+          // height (85vh) or the max 480 px cap — whichever is smaller.
+          width: 'min(480px, 100%, calc(85vh * 9 / 16))',
+        }}
       >
         <iframe
           src={info.embedUrl}
@@ -142,8 +143,14 @@ function PlayerFrame({ info, title }) {
 
   return (
     <div
-      className="mx-auto w-full rounded-xl overflow-hidden bg-black shadow-2xl ring-1 ring-white/10"
-      style={{ aspectRatio: '16 / 9', maxHeight: '85vh' }}
+      className="mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10"
+      style={{
+        aspectRatio: '16 / 9',
+        // Honour aspect ratio: clamp width to whichever is smaller — the
+        // container's 100 % or the width that produces 85 vh at 16:9. This
+        // prevents YouTube from letterboxing the video with black bars.
+        width: 'min(100%, calc(85vh * 16 / 9))',
+      }}
     >
       <iframe
         src={info.embedUrl}

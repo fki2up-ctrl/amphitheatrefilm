@@ -18,6 +18,12 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/content';
+import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
+
+// Preview thumbnails in the editor sidebar are small; 400 px is ample even
+// at 2× DPR. `previewSrc` returns the optimized Cloudinary URL when possible,
+// or the raw input otherwise — safe to pipe any src through.
+const previewSrc = (url, width = 400) => optimizeCloudinaryUrl(url || '', width);
 
 // ---------------------------------------------------------------------------
 // Editor drawer — an in-browser UI to edit every piece of site content.
@@ -279,7 +285,11 @@ function ProfileSection({ c }) {
       <div className="flex items-start gap-4">
         <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-ink-800 ring-1 ring-white/10">
           {PROFILE.photo ? (
-            <img src={PROFILE.photo} alt="" className="w-full h-full object-cover" />
+            <img
+              src={previewSrc(PROFILE.photo, 200)}
+              alt=""
+              className="w-full h-full object-cover"
+            />
           ) : null}
         </div>
         <div className="flex-1">
@@ -288,6 +298,7 @@ function ProfileSection({ c }) {
             value={PROFILE.photo}
             onChange={(v) => setProfile({ photo: v })}
             placeholder="https://…"
+            hint={isCloudinaryUrl(PROFILE.photo) ? 'Cloudinary — auto-optimized (f_auto, q_auto, w_200+).' : undefined}
           />
         </div>
       </div>
@@ -321,7 +332,7 @@ function ProfileSection({ c }) {
           <div className="w-10 h-10 shrink-0 rounded-md overflow-hidden bg-ink-800 ring-1 ring-white/10 flex items-center justify-center">
             {PROFILE.favicon ? (
               <img
-                src={PROFILE.favicon}
+                src={previewSrc(PROFILE.favicon, 64)}
                 alt="favicon preview"
                 className="w-7 h-7 object-contain"
                 onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
@@ -359,7 +370,7 @@ function FeaturedVideoSection({ c }) {
           style={{ aspectRatio: '16 / 9' }}
         >
           <img
-            src={poster}
+            src={previewSrc(poster, 800)}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
             onError={(e) => (e.currentTarget.style.display = 'none')}
@@ -550,9 +561,10 @@ function TopicsSection({ c }) {
                           value={p.image}
                           onChange={(v) => updateProject(ti, pi, { image: v })}
                           compact
+                          hint={isCloudinaryUrl(p.image) ? 'Cloudinary — auto-optimized.' : undefined}
                         />
                         <CropPicker
-                          src={p.image || guessPreviewUrl(p.url)}
+                          src={previewSrc(p.image || guessPreviewUrl(p.url), 600)}
                           position={p.imagePosition || '50% 50%'}
                           onChange={(pos) =>
                             updateProject(ti, pi, { imagePosition: pos })
@@ -675,7 +687,7 @@ function Section({ title, hint, action, children }) {
   );
 }
 
-function Field({ label, value, onChange, placeholder, textarea, compact }) {
+function Field({ label, value, onChange, placeholder, textarea, compact, hint }) {
   const common =
     'w-full bg-ink-800/80 border border-white/10 rounded-md px-3 py-2 text-sm text-white/90 placeholder:text-white/25 focus:outline-none focus:border-white/30 transition-colors';
   return (
@@ -698,6 +710,11 @@ function Field({ label, value, onChange, placeholder, textarea, compact }) {
           placeholder={placeholder}
           className={common}
         />
+      )}
+      {hint && (
+        <span className="mt-1 block text-[10px] text-emerald-300/70">
+          {hint}
+        </span>
       )}
     </label>
   );

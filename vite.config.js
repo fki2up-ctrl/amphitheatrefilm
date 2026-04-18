@@ -120,7 +120,11 @@ function contentSaverPlugin() {
 // sync — this file is the source of truth.
 // -----------------------------------------------------------------------------
 
-const CSP = [
+// Base CSP shared by dev + prod. Directives that only make sense over HTTPS
+// (`upgrade-insecure-requests`) are appended in the prod variant only —
+// Safari on plain-HTTP localhost would otherwise try to rewrite every asset
+// request to https://localhost and blank the page.
+const CSP_BASE = [
   "default-src 'self'",
   // React/Vite client inject a small inline bootstrap; 'unsafe-inline' is
   // kept only for <style> (Tailwind-generated + Framer Motion inline styles).
@@ -134,19 +138,20 @@ const CSP = [
   "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.youtube.com https://player.vimeo.com https://*.vimeo.com https://www.instagram.com https://*.instagram.com",
   // API calls: 'self' for our own dev-save endpoint; https: catch-all for
   // Google Fonts CSS and any third-party integrations added later.
-  "connect-src 'self' https:",
+  "connect-src 'self' https: ws: wss:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   // Modern replacement for X-Frame-Options. SAMEORIGIN below is kept for
   // legacy-browser fallback; browsers that understand CSP prefer this.
   "frame-ancestors 'self'",
-  "upgrade-insecure-requests",
-].join('; ');
+];
 
-const SECURITY_HEADERS = {
-  'Content-Security-Policy': CSP,
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+const CSP_PROD = [...CSP_BASE, 'upgrade-insecure-requests'].join('; ');
+const CSP_DEV  = CSP_BASE.join('; ');
+
+// Shared headers that are safe over plain HTTP (dev) and HTTPS (prod).
+const COMMON_HEADERS = {
   'X-Frame-Options': 'SAMEORIGIN',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -156,8 +161,23 @@ const SECURITY_HEADERS = {
   'Cross-Origin-Resource-Policy': 'same-site',
 };
 
+// Dev server — plain HTTP. Must NOT set HSTS or upgrade-insecure-requests,
+// Safari remembers HSTS per host and would permanently force HTTPS on
+// localhost, bricking the dev server until its HSTS cache is cleared.
+const DEV_HEADERS = {
+  ...COMMON_HEADERS,
+  'Content-Security-Policy': CSP_DEV,
+};
+
+// Production preview / deployed hosts — served over HTTPS, safe to add HSTS.
+const PROD_HEADERS = {
+  ...COMMON_HEADERS,
+  'Content-Security-Policy': CSP_PROD,
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+};
+
 export default defineConfig({
   plugins: [react(), contentSaverPlugin()],
-  server: { port: 5173, host: true, headers: SECURITY_HEADERS },
-  preview: { port: 4173, host: true, headers: SECURITY_HEADERS },
+  server:  { port: 5173, host: true, headers: DEV_HEADERS },
+  preview: { port: 4173, host: true, headers: PROD_HEADERS },
 });
