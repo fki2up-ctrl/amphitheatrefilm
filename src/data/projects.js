@@ -161,6 +161,8 @@ export const TOPICS = [
       title:    "ASICS — Fall/Winter 25",
       subtitle: "/w Sky Wongravee",
       url:      "https://www.instagram.com/reel/DPBdM_tk6Nc/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776526848/Screenshot_2569-04-18_at_22.40.20_tnt8zv.png",
+      imagePosition: "53% 15%",
     }),
     project({
       title:    "Mikimoto — High Jewelry",
