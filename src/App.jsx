@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import ProjectGrid from './components/ProjectGrid';
@@ -132,6 +133,8 @@ export default function App() {
       {/* Cinematic 3-phase intro. Plays once per session, locks scroll while
           on screen, then unmounts via AnimatePresence. */}
       <Intro />
+
+      <SpeedInsights />
     </div>
   );
 }
