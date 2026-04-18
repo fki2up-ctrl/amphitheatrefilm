@@ -51,6 +51,8 @@ export const TOPICS = [
       title:    "Emporio Armani — Power Of You",
       subtitle: "ft. Namtan Tipnaree",
       url:      "https://www.instagram.com/p/DWoLO3_DLvt",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776525527/Screenshot_2569-04-18_at_22.16.17_jlwlsk.png ",
+      imagePosition: "48% 64%",
     }),
     project({
       title:    "GATSBY CrazyCool",
