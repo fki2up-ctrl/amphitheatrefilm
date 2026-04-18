@@ -82,16 +82,6 @@ export default function Editor({ open, onClose }) {
     }
   };
 
-  // Auto-save with debounce - triggers 2 seconds after any change
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (open) {
-        doSave();
-      }
-    }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [c.state, open]);
-
   // Save writes directly to src/data/projects.js via the dev endpoint.
   // No password re-prompt — the editor is already unlocked.
   const handleSave = () => doSave();
