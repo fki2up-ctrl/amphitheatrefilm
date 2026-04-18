@@ -220,6 +220,8 @@ export const TOPICS = [
       title:    "BLEU DE CHANEL — L’EXCLUSIF",
       subtitle: "APEC Interview",
       url:      "https://www.instagram.com/reel/DN5eWJwE1Gb",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776526676/Screenshot_2569-04-18_at_22.37.29_gvhdz5.png",
+      imagePosition: "52% 57%",
     }),
     project({
       title:    "ONE's Perfect Pair",
