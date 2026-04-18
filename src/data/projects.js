@@ -179,6 +179,8 @@ export const TOPICS = [
       title:    "OMEGA Seamaster",
       subtitle: "ft. Jame Jirayu",
       url:      "https://www.instagram.com/p/DRYhKyaEzll",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776526350/Screenshot_2569-04-18_at_22.31.45_dx6mdq.png",
+      imagePosition: "51% 33%",
     }),
     project({
       title:    "Seiko Diver's Watch 60th Anniversary",
