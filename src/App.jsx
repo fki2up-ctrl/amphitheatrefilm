@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import ProjectGrid from './components/ProjectGrid';
@@ -122,6 +123,7 @@ export default function App() {
 
       <VideoModal project={openProject} onClose={() => setOpenProject(null)} />
       <Editor open={editorOpen} onClose={() => setEditorOpen(false)} />
+      <SpeedInsights />
     </div>
   );
 }
