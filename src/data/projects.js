@@ -138,7 +138,7 @@ export const TOPICS = [
       subtitle: "ft. Thanaerng Kanyawee",
       url:      "https://www.instagram.com/reel/DScU0v1Ewfx",
       image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776525167/Screenshot_2569-04-18_at_22.12.09_juoizn.png",
-      imagePosition: "49% 0%",
+      imagePosition: "48% 16%",
     }),
     project({
       title:    "Gucci — Fall/Winter 2025",
