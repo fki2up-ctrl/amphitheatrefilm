@@ -65,11 +65,15 @@ export const TOPICS = [
       title:    "Emporio Armani — Stronger With You",
       subtitle: "ft. Jeff Satur",
       url:      "https://www.instagram.com/p/DJY6UTVy58v",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776527944/Screenshot_2569-04-18_at_22.48.49_zxadwl.png",
+      imagePosition: "63% 53%",
     }),
     project({
       title:    "Bifesta",
       subtitle: "ft. Nene Pornnappan",
       url:      "https://www.instagram.com/p/DQ9Hq-mAthv",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776527992/Screenshot_2569-04-18_at_22.54.53_hkqdzs.png",
+      imagePosition: "53% 29%",
     }),
   ]),
 
@@ -144,6 +148,8 @@ export const TOPICS = [
       title:    "Gucci — Fall/Winter 2025",
       subtitle: "/w Jay Park",
       url:      "https://www.instagram.com/reel/DOAcN-uEzAx",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528054/Screenshot_2569-04-18_at_22.58.06_rgdkys.png",
+      imagePosition: "53% 13%",
     }),
     project({
       title:    "Onitsuka Tiger — October 25",
@@ -173,6 +179,8 @@ export const TOPICS = [
       title:    "Balenciaga — Fall Collection 2025",
       subtitle: "/w PP Krit",
       url:      "https://www.instagram.com/reel/DKhEQDbzYfD/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776527991/Screenshot_2569-04-18_at_22.54.22_fizd0d.png",
+      imagePosition: "51% 18%",
     }),
     project({
       title:    "Dior — Cruise 2025",
@@ -195,11 +203,15 @@ export const TOPICS = [
       title:    "Saint Laurent — Fashion Video",
       subtitle: "/w Pemmwasu",
       url:      "https://www.instagram.com/reels/DIBa9H0TuoA",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776527948/Screenshot_2569-04-18_at_22.53.40_hicebi.png",
+      imagePosition: "66% 56%",
     }),
     project({
       title:    "Bvlgari",
       subtitle: "/w Mile Pakpoom",
       url:      "https://www.instagram.com/reel/DFopCQZhHE6/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776527940/Screenshot_2569-04-18_at_22.46.17_rugktf.png",
+      imagePosition: "50% 32%",
     }),
   ]),
 
@@ -229,6 +241,8 @@ export const TOPICS = [
       title:    "ONE's Perfect Pair",
       subtitle: "/w Jamy James at One Bangkok",
       url:      "https://www.instagram.com/reel/DKPC7R-zKah/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528038/Screenshot_2569-04-18_at_22.56.55_by6fgt.png",
+      imagePosition: "49% 39%",
     }),
   ]),
 
