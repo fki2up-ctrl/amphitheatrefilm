@@ -10,28 +10,25 @@
 /* ── 1. PROFILE ──────────────────────────────────────────────────────────── */
 
 export const PROFILE = {
-  photo:            "https://lh3.googleusercontent.com/d/1YFbaxWDiggjQNeuv0q1fOgkvL8vpJiph=w800",
-  name:             "Amphitheatre Film",
-  role:             "Director / Cinematographer",
-  tagline:          "With kindness, respect and mindful.",
-  taglineEmphasis:  "kindness",
-  // Browser-tab title (shown in the window/tab) and favicon URL.
-  siteTitle:        "Amphitheatre Film — Cinematic Storytelling",
-  favicon:          "/favicon.svg",
-  // Optional hero / showreel video at the top of the page. Accepts any
-  // YouTube, Vimeo, or Instagram URL. Leave empty to hide the hero.
-  featuredVideo:      "",
-  featuredVideoTitle: "",
-  featuredVideoPoster:"", // optional custom poster image
+  photo:               "https://lh3.googleusercontent.com/d/1YFbaxWDiggjQNeuv0q1fOgkvL8vpJiph=w800",
+  name:                "Film Natthawut",
+  role:                "Director / Cinematographer",
+  tagline:             "I'm wishing to be a light painter",
+  taglineEmphasis:     "light painter",
+  siteTitle:           "Film Natthawut - Portfolio",
+  favicon:             "/favicon.svg",
+  featuredVideo:       "",
+  featuredVideoTitle:  "",
+  featuredVideoPoster: "",
 };
 
 
 /* ── 2. CONTACT ──────────────────────────────────────────────────────────── */
 
 export const CONTACT = {
-  email:     "hello@amphitheatrefilm.com",
-  instagram: "https://instagram.com/amphitheatrefilm",
-  facebook:  "https://facebook.com/amphitheatrefilm",
+  email:     "natthawut.niyomrot@gmail.com",
+  instagram: "https://www.instagram.com/apttfilm/",
+  facebook:  "https://www.facebook.com/FILMKI2UP",
   linktree:  "https://linktr.ee/amphitheatrefilm",
 };
 
@@ -69,16 +66,6 @@ export const TOPICS = [
       title:    "Bifesta",
       subtitle: "ft. Nene Pornnappan",
       url:      "https://www.instagram.com/p/DQ9Hq-mAthv",
-    }),
-    project({
-      title:    "G.H. Mumm — Not Your Typical Location",
-      subtitle: "Brand Film",
-      url:      "https://www.instagram.com/reel/DIQOheXTCOk/",
-    }),
-    project({
-      title:    "G.H. Mumm — Not Your Typical Party",
-      subtitle: "Brand Film",
-      url:      "https://www.instagram.com/reel/DD6x5DRTr1L/",
     }),
   ]),
 
