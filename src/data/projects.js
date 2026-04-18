@@ -149,6 +149,8 @@ export const TOPICS = [
       title:    "Onitsuka Tiger — October 25",
       subtitle: "/w Baifern & Gulf",
       url:      "https://www.instagram.com/reel/DQDjBWsE1ol/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776526466/Screenshot_2569-04-18_at_22.34.02_giwwg0.png",
+      imagePosition: "53% 52%",
     }),
     project({
       title:    "Tiffany & Co.",
