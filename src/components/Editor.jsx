@@ -16,6 +16,8 @@ import {
   AlertCircle,
   Crop,
   RefreshCw,
+  ChevronDown,
+  GripVertical,
 } from 'lucide-react';
 import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/content';
 import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
@@ -457,6 +459,7 @@ function TopicsSection({ c }) {
     updateProject,
     removeProject,
     moveProject,
+    moveProjectTo,
   } = c;
   const [open, setOpen] = useState({}); // per-topic open state
 
@@ -520,66 +523,15 @@ function TopicsSection({ c }) {
                     onChange={(v) => updateTopic(ti, { label: v })}
                   />
 
-                  <div className="space-y-2">
-                    {t.projects.map((p, pi) => (
-                      <div key={pi} className="rounded-md border border-white/10 bg-ink-900/60 p-3 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="flex-1 space-y-2">
-                            <Field
-                              label="Title"
-                              value={p.title}
-                              onChange={(v) => updateProject(ti, pi, { title: v })}
-                              compact
-                            />
-                            <Field
-                              label="Subtitle"
-                              value={p.subtitle}
-                              onChange={(v) => updateProject(ti, pi, { subtitle: v })}
-                              compact
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <IconBtn title="Move up" onClick={() => moveProject(ti, pi, -1)}>
-                              <ArrowUp className="w-3 h-3" />
-                            </IconBtn>
-                            <IconBtn title="Move down" onClick={() => moveProject(ti, pi, +1)}>
-                              <ArrowDown className="w-3 h-3" />
-                            </IconBtn>
-                            <IconBtn title="Delete" onClick={() => removeProject(ti, pi)} danger>
-                              <Trash2 className="w-3 h-3" />
-                            </IconBtn>
-                          </div>
-                        </div>
-                        <Field
-                          label="URL (YouTube, Vimeo, or Instagram)"
-                          value={p.url}
-                          onChange={(v) => updateProject(ti, pi, { url: v })}
-                          compact
-                        />
-                        <Field
-                          label="Custom image URL (optional — YouTube auto-derives)"
-                          value={p.image}
-                          onChange={(v) => updateProject(ti, pi, { image: v })}
-                          compact
-                          hint={isCloudinaryUrl(p.image) ? 'Cloudinary — auto-optimized.' : undefined}
-                        />
-                        <CropPicker
-                          src={previewSrc(p.image || guessPreviewUrl(p.url), 600)}
-                          position={p.imagePosition || '50% 50%'}
-                          onChange={(pos) =>
-                            updateProject(ti, pi, { imagePosition: pos })
-                          }
-                        />
-                      </div>
-                    ))}
-
-                    <button
-                      onClick={() => addProject(ti)}
-                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-dashed border-white/15 text-[11px] text-white/60 hover:text-white hover:border-white/40"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add project to "{t.label}"
-                    </button>
-                  </div>
+                  <ProjectList
+                    ti={ti}
+                    topic={t}
+                    updateProject={updateProject}
+                    removeProject={removeProject}
+                    moveProject={moveProject}
+                    moveProjectTo={moveProjectTo}
+                    addProject={addProject}
+                  />
                 </div>
               )}
             </div>
@@ -587,6 +539,282 @@ function TopicsSection({ c }) {
         })}
       </div>
     </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Drag-and-drop — uses the native HTML5 Drag and Drop API (no deps).
+//
+//   Data on dragstart:  MIME 'application/x-project' ⇒ JSON { ti, pi }
+//   Drop targets:
+//     - ProjectRow    → drops BEFORE or AFTER depending on mouse-Y midpoint
+//     - ProjectList   → drops at the END of the destination topic (covers
+//                        empty-topic and past-the-last-item drops)
+//
+// The move is committed via `moveProjectTo(srcTi, srcPi, dstTi, dstPi)` from
+// the content store, which handles same-topic-shift adjustment internally.
+// ---------------------------------------------------------------------------
+
+const DRAG_MIME = 'application/x-project';
+
+function readDragPayload(dt) {
+  // `getData` returns '' on dragover in most browsers for security reasons;
+  // we only rely on it in onDrop. Types-check is used for dragover feedback.
+  try {
+    return JSON.parse(dt.getData(DRAG_MIME));
+  } catch {
+    return null;
+  }
+}
+
+function ProjectList({
+  ti, topic, updateProject, removeProject, moveProject, moveProjectTo, addProject,
+}) {
+  const [dropAtEnd, setDropAtEnd] = useState(false);
+
+  const handleContainerOver = (e) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    // Only show the "drop at end" indicator when the user is hovering the
+    // empty tail region (outside any row). Rows stop propagation themselves.
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropAtEnd(true);
+  };
+
+  const handleContainerLeave = (e) => {
+    // Only clear when the cursor truly leaves the wrapper (not when it
+    // crosses into a child row).
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setDropAtEnd(false);
+  };
+
+  const handleContainerDrop = (e) => {
+    setDropAtEnd(false);
+    const payload = readDragPayload(e.dataTransfer);
+    if (!payload) return;
+    e.preventDefault();
+    moveProjectTo(payload.ti, payload.pi, ti, topic.projects.length);
+  };
+
+  return (
+    <div
+      onDragOver={handleContainerOver}
+      onDragLeave={handleContainerLeave}
+      onDrop={handleContainerDrop}
+      className="space-y-2"
+    >
+      {topic.projects.map((p, pi) => (
+        <ProjectRow
+          key={pi}
+          ti={ti}
+          pi={pi}
+          p={p}
+          updateProject={updateProject}
+          removeProject={removeProject}
+          moveProject={moveProject}
+          moveProjectTo={moveProjectTo}
+        />
+      ))}
+
+      <button
+        onClick={() => addProject(ti)}
+        className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border border-dashed text-[11px] transition-colors ${
+          dropAtEnd
+            ? 'border-emerald-400/70 text-emerald-200'
+            : 'border-white/15 text-white/60 hover:text-white hover:border-white/40'
+        }`}
+      >
+        <Plus className="w-3.5 h-3.5" />
+        {dropAtEnd ? `Drop to append to "${topic.label}"` : `Add project to "${topic.label}"`}
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ProjectRow — one collapsible, draggable card per project inside a topic.
+// Collapsed: shows index, thumb, title/subtitle, a drag handle, and actions.
+// Expanded: reveals all editable fields + the crop picker.
+// Newly-added projects (empty title/url/image) open expanded by default so
+// the user lands on the form ready to type.
+// ---------------------------------------------------------------------------
+
+function ProjectRow({
+  ti, pi, p, updateProject, removeProject, moveProject, moveProjectTo,
+}) {
+  const isEmpty = !p.title && !p.url && !p.image;
+  const [expanded, setExpanded] = useState(isEmpty);
+  const [dragging, setDragging] = useState(false);
+  const [dropEdge, setDropEdge] = useState(null); // 'top' | 'bottom' | null
+
+  const thumbSrc = previewSrc(p.image || guessPreviewUrl(p.url), 120);
+
+  // -- Drag source ----------------------------------------------------------
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData(DRAG_MIME, JSON.stringify({ ti, pi }));
+    e.dataTransfer.effectAllowed = 'move';
+    setDragging(true);
+    setExpanded(false); // tidier "card" while dragging
+  };
+
+  const handleDragEnd = () => {
+    setDragging(false);
+    setDropEdge(null);
+  };
+
+  // -- Drop target ----------------------------------------------------------
+  const handleDragOver = (e) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation(); // keep the container indicator off while over a row
+    e.dataTransfer.dropEffect = 'move';
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isTop = e.clientY - rect.top < rect.height / 2;
+    setDropEdge(isTop ? 'top' : 'bottom');
+  };
+
+  const handleDragLeave = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setDropEdge(null);
+  };
+
+  const handleDrop = (e) => {
+    const payload = readDragPayload(e.dataTransfer);
+    setDropEdge(null);
+    if (!payload) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isTop = e.clientY - rect.top < rect.height / 2;
+    const dstPi = isTop ? pi : pi + 1;
+    moveProjectTo(payload.ti, payload.pi, ti, dstPi);
+  };
+
+  return (
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`relative rounded-md border bg-ink-900/60 overflow-hidden transition-opacity ${
+        dragging ? 'opacity-40 border-white/20' : 'border-white/10'
+      }`}
+    >
+      {/* Top / bottom drop indicators */}
+      {dropEdge === 'top' && (
+        <span className="pointer-events-none absolute inset-x-0 -top-px h-0.5 bg-emerald-400" />
+      )}
+      {dropEdge === 'bottom' && (
+        <span className="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 bg-emerald-400" />
+      )}
+
+      {/* Collapsed header */}
+      <div className="flex items-center gap-1.5 p-2">
+        {/* Dedicated drag handle — only this element is draggable, so form
+            inputs below stay fully interactive. */}
+        <span
+          draggable
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          title="Drag to reorder / move between topics"
+          aria-label="Drag handle"
+          className="shrink-0 w-5 h-7 flex items-center justify-center text-white/35 hover:text-white/80 cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </span>
+
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-white/[0.03] rounded px-1 py-1 -my-1 transition-colors"
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Collapse project' : 'Expand project'}
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 shrink-0 text-white/45 transition-transform ${
+              expanded ? 'rotate-0' : '-rotate-90'
+            }`}
+          />
+          <span className="text-[10px] text-white/30 tabular-nums shrink-0 w-5">
+            {String(pi + 1).padStart(2, '0')}
+          </span>
+          <span className="w-10 h-7 rounded shrink-0 bg-ink-800 overflow-hidden ring-1 ring-white/10">
+            {thumbSrc ? (
+              <img
+                src={thumbSrc}
+                alt=""
+                className="w-full h-full object-cover"
+                style={{ objectPosition: p.imagePosition || '50% 50%' }}
+                onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+              />
+            ) : null}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[12.5px] text-white/85">
+              {p.title || (
+                <span className="text-white/35 italic">Untitled project</span>
+              )}
+            </span>
+            {p.subtitle && (
+              <span className="block truncate text-[10px] text-white/45">
+                {p.subtitle}
+              </span>
+            )}
+          </span>
+        </button>
+        <IconBtn title="Move up" onClick={() => moveProject(ti, pi, -1)}>
+          <ArrowUp className="w-3 h-3" />
+        </IconBtn>
+        <IconBtn title="Move down" onClick={() => moveProject(ti, pi, +1)}>
+          <ArrowDown className="w-3 h-3" />
+        </IconBtn>
+        <IconBtn
+          title="Delete"
+          onClick={() => {
+            if (window.confirm(`Delete "${p.title || 'this project'}"?`)) {
+              removeProject(ti, pi);
+            }
+          }}
+          danger
+        >
+          <Trash2 className="w-3 h-3" />
+        </IconBtn>
+      </div>
+
+      {/* Expanded body */}
+      {expanded && (
+        <div className="px-3 pb-3 pt-1 space-y-2 border-t border-white/5">
+          <Field
+            label="Title"
+            value={p.title}
+            onChange={(v) => updateProject(ti, pi, { title: v })}
+            compact
+          />
+          <Field
+            label="Subtitle"
+            value={p.subtitle}
+            onChange={(v) => updateProject(ti, pi, { subtitle: v })}
+            compact
+          />
+          <Field
+            label="URL (YouTube, Vimeo, or Instagram)"
+            value={p.url}
+            onChange={(v) => updateProject(ti, pi, { url: v })}
+            compact
+          />
+          <Field
+            label="Custom image URL (optional — YouTube auto-derives)"
+            value={p.image}
+            onChange={(v) => updateProject(ti, pi, { image: v })}
+            compact
+            hint={isCloudinaryUrl(p.image) ? 'Cloudinary — auto-optimized.' : undefined}
+          />
+          <CropPicker
+            src={previewSrc(p.image || guessPreviewUrl(p.url), 600)}
+            position={p.imagePosition || '50% 50%'}
+            onChange={(pos) => updateProject(ti, pi, { imagePosition: pos })}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

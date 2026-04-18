@@ -244,11 +244,33 @@ function project({ title, subtitle = '', url, image = '', imagePosition = '50% 5
 }
 
 function autoThumbnail(url) {
-  const yt = String(url || '').match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/
-  );
-  if (yt) return `https://img.youtube.com/vi/${yt[1]}/maxresdefault.jpg`;
+  const id = parseYouTubeId(String(url || ''));
+  if (id) return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
   return 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1600&auto=format&fit=crop';
+}
+
+// Robust YouTube ID extraction — handles share links with params in any order,
+// mobile/music subdomains, and the /embed/, /shorts/, /live/, /v/ path forms.
+function parseYouTubeId(url) {
+  const ID_RE = /^[A-Za-z0-9_-]{11}$/;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^(www\.|m\.|music\.)/, '');
+    if (host === 'youtu.be') {
+      const id = u.pathname.split('/').filter(Boolean)[0] || '';
+      if (ID_RE.test(id)) return id;
+    }
+    if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+      const v = u.searchParams.get('v');
+      if (v && ID_RE.test(v)) return v;
+      const m = u.pathname.match(/^\/(?:embed|shorts|live|v)\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+    }
+  } catch { /* fall through */ }
+  const m = url.match(
+    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?[^#]*?\bv=|embed\/|shorts\/|live\/|v\/))([A-Za-z0-9_-]{11})/
+  );
+  return m ? m[1] : null;
 }
 
 function slug(s) {

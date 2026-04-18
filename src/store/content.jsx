@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import * as defaults from '../data/projects';
+import { parseYouTubeId } from '../lib/embed';
 
 const STORAGE_KEY = 'amphitheatre:content:v1';
 
@@ -76,10 +77,8 @@ function slug(s) {
 }
 
 function autoThumbnail(url) {
-  const yt = String(url || '').match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/
-  );
-  if (yt) return `https://img.youtube.com/vi/${yt[1]}/maxresdefault.jpg`;
+  const ytId = parseYouTubeId(String(url || ''));
+  if (ytId) return `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
   return 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1600&auto=format&fit=crop';
 }
 
@@ -194,6 +193,33 @@ export function ContentProvider({ children }) {
     });
   }, []);
 
+  // Move a project to any (topic, index). Powers drag-and-drop reordering
+  // across topics. `dstPi` is the index BEFORE which the project will land,
+  // measured in the destination topic's *current* projects list.
+  const moveProjectTo = useCallback((srcTi, srcPi, dstTi, dstPi) => {
+    setState((s) => {
+      if (
+        srcTi < 0 || srcTi >= s.TOPICS.length ||
+        dstTi < 0 || dstTi >= s.TOPICS.length
+      ) return s;
+      // Same-slot no-op (dropping back into own position).
+      if (srcTi === dstTi && (dstPi === srcPi || dstPi === srcPi + 1)) return s;
+
+      const TOPICS = s.TOPICS.map((t) => ({ ...t, projects: [...t.projects] }));
+      const [moved] = TOPICS[srcTi].projects.splice(srcPi, 1);
+      if (!moved) return s;
+
+      // When moving within the same topic to a later index, the splice above
+      // shifts everything left by one — adjust destination accordingly.
+      let dst = dstPi;
+      if (srcTi === dstTi && dstPi > srcPi) dst -= 1;
+      dst = Math.max(0, Math.min(dst, TOPICS[dstTi].projects.length));
+
+      TOPICS[dstTi].projects.splice(dst, 0, moved);
+      return { ...s, TOPICS };
+    });
+  }, []);
+
   // --- Derived "read" shape (same as data/projects.js exports) ------------
   const derived = useMemo(() => {
     const TOPICS = state.TOPICS.map((t, ti) => {
@@ -248,6 +274,7 @@ export function ContentProvider({ children }) {
     addProject,
     removeProject,
     moveProject,
+    moveProjectTo,
     reset,
     // read shape for components
     ...derived,
@@ -369,11 +396,33 @@ function project({ title, subtitle = '', url, image = '', imagePosition = '50% 5
 }
 
 function autoThumbnail(url) {
-  const yt = String(url || '').match(
-    /(?:youtu\\.be\\/|youtube\\.com\\/(?:watch\\?v=|embed\\/|shorts\\/))([A-Za-z0-9_-]{11})/
-  );
-  if (yt) return \`https://img.youtube.com/vi/\${yt[1]}/maxresdefault.jpg\`;
+  const id = parseYouTubeId(String(url || ''));
+  if (id) return \`https://img.youtube.com/vi/\${id}/maxresdefault.jpg\`;
   return 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1600&auto=format&fit=crop';
+}
+
+// Robust YouTube ID extraction — handles share links with params in any order,
+// mobile/music subdomains, and the /embed/, /shorts/, /live/, /v/ path forms.
+function parseYouTubeId(url) {
+  const ID_RE = /^[A-Za-z0-9_-]{11}$/;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^(www\\.|m\\.|music\\.)/, '');
+    if (host === 'youtu.be') {
+      const id = u.pathname.split('/').filter(Boolean)[0] || '';
+      if (ID_RE.test(id)) return id;
+    }
+    if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+      const v = u.searchParams.get('v');
+      if (v && ID_RE.test(v)) return v;
+      const m = u.pathname.match(/^\\/(?:embed|shorts|live|v)\\/([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+    }
+  } catch { /* fall through */ }
+  const m = url.match(
+    /(?:youtu\\.be\\/|youtube(?:-nocookie)?\\.com\\/(?:watch\\?[^#]*?\\bv=|embed\\/|shorts\\/|live\\/|v\\/))([A-Za-z0-9_-]{11})/
+  );
+  return m ? m[1] : null;
 }
 
 function slug(s) {
