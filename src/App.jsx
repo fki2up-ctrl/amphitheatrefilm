@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from '@vercel/analytics/react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import ProjectGrid from './components/ProjectGrid';
@@ -135,6 +136,7 @@ export default function App() {
       <Intro />
 
       <SpeedInsights />
+      <Analytics />
     </div>
   );
 }
