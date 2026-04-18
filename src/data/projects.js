@@ -132,6 +132,8 @@ export const TOPICS = [
       title:    "Bottega Veneta — Summer 2025",
       subtitle: "ft. Thanaerng Kanyawee",
       url:      "https://www.instagram.com/reel/DScU0v1Ewfx",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776525039/Screenshot_2569-04-18_at_22.10.09_aiszet.png",
+      imagePosition: "51% 46%",
     }),
     project({
       title:    "Gucci — Fall/Winter 2025",
