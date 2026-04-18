@@ -131,6 +131,7 @@ export const TOPICS = [
       title:    "Chaumet",
       subtitle: "ft. Bow Maylada",
       url:      "https://www.instagram.com/p/DR01-qYE24E",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776526199/Screenshot_2569-04-18_at_22.29.40_hseyvn.png",
     }),
     project({
       title:    "Bottega Veneta — Summer 2025",
