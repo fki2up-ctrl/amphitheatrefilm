@@ -71,6 +71,11 @@ export const TOPICS = [
 
   topic("MV, Live Session & Short Film", [
     project({
+      title:    "JACKIE JACKRIN THE FIRST QUARTER",
+      subtitle: "JACKIE JACKRIN 25th BIRTHDAY PARTY",
+      url:      "https://www.youtube.com/watch?si=izrEcvTOF1H4yNVU&v=Gzspn8-1QmY&feature=youtu.be",
+    }),
+    project({
       title:    "เติมเธอ (Fill My Heart) — KRIST",
       subtitle: "2nd DOP · Live Session",
       url:      "https://youtu.be/TQi8-llNlVA",
