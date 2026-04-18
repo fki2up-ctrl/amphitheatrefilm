@@ -190,11 +190,15 @@ export const TOPICS = [
       title:    "Volvo ES90 × Esquire Thailand",
       subtitle: "Brand Content",
       url:      "https://www.instagram.com/reel/DW0IldDhC02",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776514759/EsqVolvoES90_h3okwn.png",
+      imagePosition: "48% 55%",
     }),
     project({
       title:    "Plantae — แห่ Run หมาก",
       subtitle: "Cinematographer",
       url:      "https://www.instagram.com/p/DUfxPFHEtLp",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776521480/Screenshot_2569-04-18_at_21.09.52_opjhq3.png",
+      imagePosition: "68% 62%",
     }),
     project({
       title:    "BLEU DE CHANEL — L’EXCLUSIF",
