@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import Sidebar from './components/Sidebar';
@@ -10,10 +11,26 @@ import useActiveSection from './hooks/useActiveSection';
 import { useContent } from './store/content';
 import Editor from './components/Editor';
 import Intro from './components/Intro';
+import Landing from './components/Landing';
+import GalleryHeader from './components/GalleryHeader';
 import StaticGrainOverlay from './components/StaticGrainOverlay';
+import { usePhase, CATEGORY_ALL } from './flow/PhaseProvider';
 
 export default function App() {
   const { CATEGORIES, ALL_PROJECTS, SITE_ASSETS, PROFILE } = useContent();
+  const { phase, selectedCategory, completeIntro, skipToGallery } = usePhase();
+
+  // Hybrid view: 'all' shows the full long-scroll catalogue + FeaturedVideo;
+  // any specific topic id collapses to a single-category grid with no
+  // FeaturedVideo banner (GalleryHeader replaces that visual anchor).
+  const singleCategoryId = selectedCategory === CATEGORY_ALL ? null : selectedCategory;
+  const isAllView = !singleCategoryId;
+
+  // Intro finished — advance to the Landing hero (Chunk C+). Landing itself
+  // will drive the transition to Gallery when the user picks a category.
+  const handleIntroComplete = useCallback(() => {
+    completeIntro();
+  }, [completeIntro]);
 
   // Keep <title> and favicon in sync with the editable PROFILE values.
   useEffect(() => {
@@ -84,6 +101,7 @@ export default function App() {
   );
 
   const bg = SITE_ASSETS.background;
+  const showGallery = phase === 'gallery';
 
   return (
     <div
@@ -105,35 +123,57 @@ export default function App() {
         />
       )}
 
-      <MobileNav
-        activeCategoryId={activeCategoryId}
-        onNavigateCategory={handleNavigateCategory}
-        onSelectProject={handleSelectProject}
-      />
-      <Sidebar
-        activeProjectId={activeProjectId}
-        activeCategoryId={activeCategoryId}
-        onSelectProject={handleSelectProject}
-        onOpenEditor={() => setEditorOpen(true)}
-      />
+      {/* Gallery view — only mounted once the user has entered it. Sidebar,
+          mobile nav, editor trigger, and grid are all gallery-only concerns. */}
+      <AnimatePresence>
+        {showGallery && (
+          <motion.div
+            key="gallery"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            // Delay entrance so the Landing's dive-in (~1.0s) is visually
+            // dominant; the gallery materialises out of the black at the
+            // very end of the zoom.
+            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.55 }}
+          >
+            <MobileNav />
+            <Sidebar
+              activeProjectId={activeProjectId}
+              activeCategoryId={activeCategoryId}
+              onSelectProject={handleSelectProject}
+              onOpenEditor={() => setEditorOpen(true)}
+            />
 
-      <main className="relative z-10 lg:ml-[280px]">
-        <div className="px-4 sm:px-8 lg:px-12 pt-32 sm:pt-28 lg:pt-16 pb-24">
-          <FeaturedVideo onOpen={setOpenProject} />
-          <ProjectGrid onOpen={setOpenProject} />
-        </div>
-      </main>
+            <main className="relative z-10 lg:ml-[280px]">
+              <div className="px-4 sm:px-8 lg:px-12 pt-12 sm:pt-16 lg:pt-16 pb-28 lg:pb-24">
+                <GalleryHeader />
+                {isAllView && <FeaturedVideo onOpen={setOpenProject} />}
+                <ProjectGrid
+                  onOpen={setOpenProject}
+                  filterCategoryId={singleCategoryId}
+                />
+              </div>
+            </main>
 
-      {/* Subtle film-grain overlay — opacity rises with scroll. Sits above
-          the background but below the main content. */}
-      <StaticGrainOverlay />
+            <StaticGrainOverlay />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <VideoModal project={openProject} onClose={() => setOpenProject(null)} />
       <Editor open={editorOpen} onClose={() => setEditorOpen(false)} />
 
-      {/* Cinematic 3-phase intro. Plays once per session, locks scroll while
-          on screen, then unmounts via AnimatePresence. */}
-      <Intro />
+      {/* Cinematic intro → Landing handoff. Both live inside a single
+          AnimatePresence so Framer's shared `layoutId` can interpolate the
+          brand name/role elements from their Intro center position to the
+          Landing bottom dock. */}
+      <AnimatePresence>
+        {phase === 'intro' && (
+          <Intro key="intro" onComplete={handleIntroComplete} />
+        )}
+        {phase === 'landing' && <Landing key="landing" />}
+      </AnimatePresence>
 
       <SpeedInsights />
       <Analytics />

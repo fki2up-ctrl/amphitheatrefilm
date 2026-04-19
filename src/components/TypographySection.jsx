@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Type, Cloud, CloudOff, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Type, Cloud, CloudOff, Check, AlertCircle, Loader2, ChevronDown } from 'lucide-react';
 import { useContent } from '../store/content';
 import {
   FONT_CATALOG,
@@ -57,8 +57,41 @@ const GROUPED_CATALOG = CATEGORY_ORDER.map((cat) => ({
   items: FONT_CATALOG.filter((f) => f.category === cat),
 }));
 
+// localStorage keys for the collapsed/expanded UI state so the editor
+// remembers your preference across sessions.
+const PANEL_OPEN_KEY = 'amphitheatre:editor:typographyOpen:v1';
+const ROLE_OPEN_KEY  = 'amphitheatre:editor:typographyRole:v1';
+
+function loadBool(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === '1') return true;
+    if (raw === '0') return false;
+    return fallback;
+  } catch { return fallback; }
+}
+function storeBool(key, value) {
+  try { localStorage.setItem(key, value ? '1' : '0'); } catch { /* ignore */ }
+}
+function loadStr(key, fallback) {
+  try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
+}
+function storeStr(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+
 export default function TypographySection() {
   const { fontSettings, setFontSettings, saveFontSettings, hasSupabase } = useContent();
+
+  // Panel open/closed state (the "category" collapse) — default closed so
+  // the editor isn't visually busy on open. Persisted across reloads.
+  const [panelOpen, setPanelOpen] = useState(() => loadBool(PANEL_OPEN_KEY, false));
+  useEffect(() => { storeBool(PANEL_OPEN_KEY, panelOpen); }, [panelOpen]);
+
+  // Which role card is currently expanded inside the panel. Only one open
+  // at a time so the UI stays compact. Empty string = all collapsed.
+  const [openRole, setOpenRole] = useState(() => loadStr(ROLE_OPEN_KEY, 'brand'));
+  useEffect(() => { storeStr(ROLE_OPEN_KEY, openRole); }, [openRole]);
 
   // Track what was last committed (to Supabase OR accepted from Supabase on
   // mount) so we can show a dirty indicator on the Save button. Initialised
@@ -119,45 +152,72 @@ export default function TypographySection() {
   }, []);
 
   return (
-    <section className="space-y-3">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-[11px] tracking-widest2 uppercase text-white/50 flex items-center gap-2">
-            <Type className="w-3.5 h-3.5" />
+    <section className="rounded-lg border border-white/10 bg-white/[0.02]">
+      {/* Category header — always clickable; chevron rotates when open. */}
+      <div className="flex items-center gap-2 p-2.5">
+        <button
+          type="button"
+          onClick={() => setPanelOpen((o) => !o)}
+          className="flex-1 flex items-center gap-2 text-left px-2 py-1 text-white/85 hover:text-white"
+          aria-expanded={panelOpen}
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform ${panelOpen ? '' : '-rotate-90'}`}
+          />
+          <Type className="w-3.5 h-3.5 text-white/60" />
+          <span className="text-[11px] tracking-widest2 uppercase text-white/70">
             Typography
-          </h3>
-          <p className="mt-1 text-[11px] text-white/40">
+          </span>
+          {isDirty && (
+            <span
+              className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-amber-300"
+              title="Unsaved font changes"
+            />
+          )}
+          <span className="ml-2 text-[10px] text-white/35 hidden sm:inline">
+            · {ROLES.length} roles
+          </span>
+        </button>
+
+        {panelOpen && (
+          <SaveButton
+            onClick={handleSave}
+            status={saveStatus}
+            isDirty={isDirty}
+            hasSupabase={hasSupabase}
+          />
+        )}
+      </div>
+
+      {panelOpen && (
+        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-white/5">
+          <p className="text-[11px] text-white/40 pt-1">
             Pick fonts for each role — changes apply live across the whole site.
           </p>
-        </div>
 
-        <SaveButton
-          onClick={handleSave}
-          status={saveStatus}
-          isDirty={isDirty}
-          hasSupabase={hasSupabase}
-        />
-      </header>
+          {saveStatus === 'error' && saveError && (
+            <div className="flex items-start gap-2 rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-[11px] text-rose-200/90">
+              <AlertCircle className="w-3.5 h-3.5 mt-[1px] shrink-0" />
+              <span className="break-words">{saveError}</span>
+            </div>
+          )}
 
-      {saveStatus === 'error' && saveError && (
-        <div className="flex items-start gap-2 rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-[11px] text-rose-200/90">
-          <AlertCircle className="w-3.5 h-3.5 mt-[1px] shrink-0" />
-          <span className="break-words">{saveError}</span>
+          <div className="space-y-2">
+            {ROLES.map((role) => (
+              <RoleCard
+                key={role.key}
+                role={role}
+                settings={fontSettings[role.key]}
+                expanded={openRole === role.key}
+                onToggle={() => setOpenRole(openRole === role.key ? '' : role.key)}
+                onChange={(next) => {
+                  setFontSettings((fs) => ({ ...fs, [role.key]: { ...fs[role.key], ...next } }));
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
-
-      <div className="space-y-3">
-        {ROLES.map((role) => (
-          <RoleCard
-            key={role.key}
-            role={role}
-            settings={fontSettings[role.key]}
-            onChange={(next) => {
-              setFontSettings((fs) => ({ ...fs, [role.key]: { ...fs[role.key], ...next } }));
-            }}
-          />
-        ))}
-      </div>
     </section>
   );
 }
@@ -165,7 +225,7 @@ export default function TypographySection() {
 // ---------------------------------------------------------------------------
 // RoleCard — one of the three (Brand / Display / Body) font-role cards.
 
-function RoleCard({ role, settings, onChange }) {
+function RoleCard({ role, settings, expanded, onToggle, onChange }) {
   const current = findFontByFamily(settings.family);
   const weights = current?.weights ?? [400];
 
@@ -188,88 +248,117 @@ function RoleCard({ role, settings, onChange }) {
     onChange({ family: next.family, weight: safeWeight });
   };
 
+  const fontLabel = current?.name ?? 'Custom';
+
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-3">
-      {/* Header: role name + hint */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm text-white/85">{role.label}</div>
-          <div className="text-[10.5px] text-white/40 leading-snug mt-0.5">
-            {role.hint}
+    <div className="rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden">
+      {/* Collapsed header — clicking toggles the controls drawer. Always
+          shows the live preview so you can scan all three roles at a glance. */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/[0.03] transition-colors"
+        aria-expanded={expanded}
+      >
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-white/50 shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <div className="text-sm text-white/85">{role.label}</div>
+            <div className="text-[10.5px] text-white/40">
+              {fontLabel} · {settings.weight}
+            </div>
+          </div>
+          <div
+            className="text-[15px] text-white/90 leading-tight truncate mt-0.5"
+            style={{
+              fontFamily:    settings.family,
+              fontWeight:    settings.weight,
+              letterSpacing: settings.tracking,
+            }}
+          >
+            {role.sample}
           </div>
         </div>
-      </div>
+      </button>
 
-      {/* Preview line — renders in the picked family/weight/tracking so the
-          user sees the effect before pressing Save. */}
-      <div
-        className={`${role.sampleSize} text-white/90 leading-tight truncate py-1`}
-        style={{
-          fontFamily:    settings.family,
-          fontWeight:    settings.weight,
-          letterSpacing: settings.tracking,
-        }}
-      >
-        {role.sample}
-      </div>
+      {expanded && (
+        <div className="px-3 pb-3 pt-2 space-y-3 border-t border-white/5">
+          <div className="text-[10.5px] text-white/40 leading-snug">
+            {role.hint}
+          </div>
 
-      {/* Controls: 3-col grid on desktop, stacked on narrow drawer widths. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <Control label="Font family">
-          <select
-            value={current?.id ?? ''}
-            onChange={(e) => handleFontChange(e.target.value)}
-            className={selectClass}
+          {/* Larger preview only shown when the card is expanded. */}
+          <div
+            className={`${role.sampleSize} text-white/90 leading-tight truncate py-1 border-b border-white/5`}
+            style={{
+              fontFamily:    settings.family,
+              fontWeight:    settings.weight,
+              letterSpacing: settings.tracking,
+            }}
           >
-            {!current && (
-              <option value="" disabled>
-                Custom ({settings.family.split(',')[0].replace(/"/g, '')})
-              </option>
-            )}
-            {GROUPED_CATALOG.map((group) => (
-              <optgroup key={group.key} label={group.label}>
-                {group.items.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
+            {role.sample}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <Control label="Font family">
+              <select
+                value={current?.id ?? ''}
+                onChange={(e) => handleFontChange(e.target.value)}
+                className={selectClass}
+              >
+                {!current && (
+                  <option value="" disabled>
+                    Custom ({settings.family.split(',')[0].replace(/"/g, '')})
+                  </option>
+                )}
+                {GROUPED_CATALOG.map((group) => (
+                  <optgroup key={group.key} label={group.label}>
+                    {group.items.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </Control>
+
+            <Control label="Weight">
+              <select
+                value={weights.includes(settings.weight) ? settings.weight : weights[0]}
+                onChange={(e) => onChange({ weight: Number(e.target.value) })}
+                className={selectClass}
+                disabled={weights.length <= 1}
+              >
+                {weights.map((w) => (
+                  <option key={w} value={w}>
+                    {w} {WEIGHT_LABELS[w] ? `· ${WEIGHT_LABELS[w]}` : ''}
                   </option>
                 ))}
-              </optgroup>
-            ))}
-          </select>
-        </Control>
+              </select>
+            </Control>
 
-        <Control label="Weight">
-          <select
-            value={weights.includes(settings.weight) ? settings.weight : weights[0]}
-            onChange={(e) => onChange({ weight: Number(e.target.value) })}
-            className={selectClass}
-            disabled={weights.length <= 1}
-          >
-            {weights.map((w) => (
-              <option key={w} value={w}>
-                {w} {WEIGHT_LABELS[w] ? `· ${WEIGHT_LABELS[w]}` : ''}
-              </option>
-            ))}
-          </select>
-        </Control>
-
-        <Control label="Letter spacing">
-          <select
-            value={matchTrackingId(settings.tracking)}
-            onChange={(e) => {
-              const preset = TRACKING_PRESETS.find((t) => t.id === e.target.value);
-              if (preset) onChange({ tracking: preset.value });
-            }}
-            className={selectClass}
-          >
-            {TRACKING_PRESETS.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </Control>
-      </div>
+            <Control label="Letter spacing">
+              <select
+                value={matchTrackingId(settings.tracking)}
+                onChange={(e) => {
+                  const preset = TRACKING_PRESETS.find((t) => t.id === e.target.value);
+                  if (preset) onChange({ tracking: preset.value });
+                }}
+                className={selectClass}
+              >
+                {TRACKING_PRESETS.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </Control>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,36 +1,35 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useContent } from '../store/content';
+import {
+  LAYOUT_ID_BRAND_NAME,
+  LAYOUT_ID_BRAND_ROLE,
+} from './Landing';
 
 // ---------------------------------------------------------------------------
-// Cinematic 3-phase intro.
-//   Phase 1 (1.5s) — "I wish to be a light painter"  (focus pull: blur → sharp)
-//   Phase 2 (1.5s) — "Amphitheatre Film"              (weight + letter-spacing
-//                                                      tightening, light leak)
-//   Phase 3 (1.0s) — Dolly-in fade-out (scale 1 → 1.1, opacity 1 → 0)
+// Cinematic intro.
+//   Phase 1 (~2.6s) — "I wish to be a light painter"  (focus-pull reveal)
+//   Phase 2 (~2.2s) — Name + role fade in (centred)
+//   Phase 3 (handoff) — When the intro unmounts, the <h1>/<p> carry a
+//                        shared `layoutId` with their twins in Landing, so
+//                        Framer Motion smoothly translates + resizes them
+//                        to the Landing bottom-center position.
 //
-// Plays once per browser session via sessionStorage.introPlayed.
-// Respects prefers-reduced-motion by skipping straight to "done".
+// Plays on EVERY visit (per the cinematic-flow spec). Respects
+// prefers-reduced-motion by skipping straight to "done".
 //
 // While visible it locks body scroll; once "done" it unmounts cleanly via
-// AnimatePresence.
+// AnimatePresence and fires `onComplete` so the parent can advance the
+// global phase state machine to Landing.
 // ---------------------------------------------------------------------------
 
-const SESSION_KEY = 'introPlayed';
-
 const PHASE1_MS = 2600; // "I wish to be a light painter"  enter(1.2s) + hold
-const PHASE2_MS = 2200; // "Amphitheatre Film" — simple fade-in hold
-const PHASE3_MS = 1000; // dolly-in fade-out
-
-// Heavyweight cinematic ease (Framer-recommended for "premium" feel).
-const DOLLY_EASE = [0.43, 0.13, 0.23, 0.96];
+const PHASE2_MS = 2200; // Name + role — simple fade-in hold
 
 export default function Intro({ onComplete }) {
-  // 'p1' | 'p2' | 'done'  — undefined on first paint while we decide.
+  // 'p1' | 'p2' | 'done'
   const [phase, setPhase] = useState(() => {
     if (typeof window === 'undefined') return 'p1';
-    try {
-      if (sessionStorage.getItem(SESSION_KEY) === '1') return 'done';
-    } catch { /* sessionStorage blocked — still play */ }
     const prefersReduced =
       window.matchMedia &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -40,7 +39,6 @@ export default function Intro({ onComplete }) {
   // Advance phases.
   useEffect(() => {
     if (phase === 'done') {
-      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
       onComplete?.();
       return;
     }
@@ -74,12 +72,13 @@ export default function Intro({ onComplete }) {
         <motion.div
           key="intro-overlay"
           aria-hidden="true"
-          initial={{ opacity: 1, scale: 1 }}
-          // Phase 3 plays as the overlay exits — dolly-in + fade.
+          initial={{ opacity: 1 }}
+          // Overlay simply fades out; the name/role elements inside carry
+          // `layoutId` and migrate to the Landing position via shared
+          // layout animation — that IS Phase 3 now.
           exit={{
             opacity: 0,
-            scale: 1.1,
-            transition: { duration: PHASE3_MS / 1000, ease: DOLLY_EASE },
+            transition: { duration: 0.9, ease: [0.4, 0, 0.2, 1] },
           }}
           className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden"
           style={{ backgroundColor: '#050505' }}
@@ -136,15 +135,24 @@ function PhaseOne() {
 // ---------------------------------------------------------------------------
 
 function PhaseTwo() {
+  const { PROFILE } = useContent();
+
+  // Keep the easing/duration for the layout morph consistent with Landing's
+  // matching motion.* elements so the handoff feels like one continuous
+  // movement rather than two separate animations stitched together.
+  const MORPH_EASE = [0.4, 0, 0.2, 1];
+  const MORPH_DURATION = 1.1;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.4, ease: 'easeIn' } }}
       transition={{ duration: 0.9, ease: 'easeOut' }}
       className="relative z-10 text-center px-6 select-none"
     >
-      <h1
+      <motion.h1
+        layoutId={LAYOUT_ID_BRAND_NAME}
+        transition={{ duration: MORPH_DURATION, ease: MORPH_EASE }}
         className="
           font-hand font-normal
           text-white
@@ -153,13 +161,14 @@ function PhaseTwo() {
           [text-shadow:0_1px_24px_rgba(255,235,200,0.14)]
         "
       >
-        Natthawut Niyomrot
-      </h1>
+        {PROFILE.name || 'Natthawut Niyomrot'}
+      </motion.h1>
 
       <motion.p
+        layoutId={LAYOUT_ID_BRAND_ROLE}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 0.55, y: 0 }}
-        transition={{ duration: 1.0, ease: 'easeOut', delay: 0.5 }}
+        transition={{ duration: MORPH_DURATION, ease: MORPH_EASE, delay: 0.5 }}
         className="
           mt-4 sm:mt-5
           font-sans font-light
@@ -168,7 +177,7 @@ function PhaseTwo() {
           tracking-[0.3em] uppercase
         "
       >
-        Director / Cinematographer
+        {PROFILE.role || 'Director / Cinematographer'}
       </motion.p>
     </motion.div>
   );

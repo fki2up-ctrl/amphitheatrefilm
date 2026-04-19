@@ -2,34 +2,55 @@ import { motion } from 'framer-motion';
 import ProjectCard from './ProjectCard';
 import { useContent } from '../store/content';
 
-// Renders the full catalogue grouped by category. Each project card gets its
-// own DOM id so the sidebar can smooth-scroll directly to it.
-export default function ProjectGrid({ onOpen }) {
+// Renders the catalogue. When `filterCategoryId` is omitted (or falsy), ALL
+// categories are shown stacked vertically — the long-scroll "hybrid: All"
+// view. When a real category id is passed, only that topic's grid renders
+// without its section header (the parent shows GalleryHeader instead).
+export default function ProjectGrid({ onOpen, filterCategoryId }) {
   const { CATEGORIES } = useContent();
+
+  // Resolve which categories to show and whether we're in single-view mode.
+  const isSingleView = Boolean(filterCategoryId);
+  const categories = isSingleView
+    ? CATEGORIES.filter((c) => c.id === filterCategoryId)
+    : CATEGORIES;
+
+  // If the user routed to a category that no longer exists (e.g. deleted in
+  // the editor after Landing was shown), fall back gracefully to empty.
+  if (isSingleView && categories.length === 0) {
+    return (
+      <div className="text-center text-sm text-white/45 py-24">
+        This category has no projects yet.
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-20 sm:space-y-28">
-      {CATEGORIES.map((cat) => (
+    <div className={isSingleView ? '' : 'space-y-20 sm:space-y-28'}>
+      {categories.map((cat) => (
         <section
           key={cat.id}
           id={cat.id}
           className="scroll-mt-24 sm:scroll-mt-28"
         >
-          <motion.header
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.7 }}
-            className="flex items-end justify-between gap-6 mb-8 sm:mb-10"
-          >
-            <div>
-              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl leading-tight">
-                {cat.label}
-              </h2>
-            </div>
-            <span className="hidden sm:block text-xs text-white/40 pb-1">
-              {cat.projects.length} works
-            </span>
-          </motion.header>
+          {!isSingleView && (
+            <motion.header
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ duration: 0.7 }}
+              className="flex items-end justify-between gap-6 mb-8 sm:mb-10"
+            >
+              <div>
+                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl leading-tight">
+                  {cat.label}
+                </h2>
+              </div>
+              <span className="hidden sm:block text-xs text-white/40 pb-1">
+                {cat.projects.length} works
+              </span>
+            </motion.header>
+          )}
 
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
             {cat.projects.map((p, i) => (

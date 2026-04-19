@@ -28,7 +28,16 @@ export default function Sidebar({ activeProjectId, activeCategoryId, onSelectPro
   const toggle = (id) => setOpenId((cur) => (cur === id ? null : id));
 
   return (
-    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] border-r border-white/5 bg-ink-950 z-40">
+    <motion.aside
+      // Slide in from off-screen left with a soft ease-in-out when the
+      // Gallery phase first mounts (after the Landing dive-in). Subsequent
+      // re-renders within the gallery don't re-animate because this element
+      // never unmounts once the gallery is shown.
+      initial={{ x: -300, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.9, ease: [0.65, 0, 0.35, 1], delay: 0.35 }}
+      className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] border-r border-white/5 bg-ink-950 z-40"
+    >
       <div className="flex flex-col justify-between w-full pb-10">
         {/* Brand */}
         <div className="min-h-0 flex flex-col">
@@ -221,7 +230,7 @@ export default function Sidebar({ activeProjectId, activeCategoryId, onSelectPro
           </p>
         </div>
       </div>
-    </aside>
+    </motion.aside>
   );
 }
 
