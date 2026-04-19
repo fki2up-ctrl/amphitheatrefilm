@@ -30,7 +30,104 @@ function genId() {
   return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 
-const STORAGE_KEY = 'amphitheatre:content:v1';
+const STORAGE_KEY       = 'amphitheatre:content:v1';
+const FONT_SETTINGS_KEY = 'amphitheatre:fontSettings:v1';
+
+// Pinned singleton-row id that matches the default in supabase/schema.sql.
+// Both sides agree on this UUID so the row can be upserted without a
+// fetch-before-write round-trip.
+const SITE_SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
+
+// Defaults mirror the :root CSS fallbacks in src/index.css so fresh installs
+// render identically whether Supabase is reachable or not.
+export const DEFAULT_FONT_SETTINGS = {
+  body: {
+    family:   '"DM Sans", ui-sans-serif, system-ui, sans-serif',
+    weight:   400,
+    tracking: '0em',
+  },
+  display: {
+    family:   '"DM Sans", ui-sans-serif, system-ui, sans-serif',
+    weight:   500,
+    tracking: '-0.01em',
+  },
+  brand: {
+    family:   '"Sacramento", ui-serif, cursive',
+    weight:   400,
+    tracking: '0.005em',
+  },
+};
+
+function loadStoredFontSettings() {
+  try {
+    const raw = localStorage.getItem(FONT_SETTINGS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.body || !parsed.display || !parsed.brand) return null;
+    return {
+      body:    { ...DEFAULT_FONT_SETTINGS.body,    ...parsed.body    },
+      display: { ...DEFAULT_FONT_SETTINGS.display, ...parsed.display },
+      brand:   { ...DEFAULT_FONT_SETTINGS.brand,   ...parsed.brand   },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Push the three typography roles into CSS custom properties on :root so
+// Tailwind's font-* utilities — which resolve to `var(--font-*)` per
+// tailwind.config.js — repaint the entire site immediately.
+function applyFontSettingsToRoot(fs) {
+  if (typeof document === 'undefined') return;
+  const r = document.documentElement.style;
+  r.setProperty('--font-body',             fs.body.family);
+  r.setProperty('--font-display',          fs.display.family);
+  r.setProperty('--font-brand',            fs.brand.family);
+  r.setProperty('--font-body-weight',      String(fs.body.weight));
+  r.setProperty('--font-display-weight',   String(fs.display.weight));
+  r.setProperty('--font-brand-weight',     String(fs.brand.weight));
+  r.setProperty('--font-body-tracking',    fs.body.tracking);
+  r.setProperty('--font-display-tracking', fs.display.tracking);
+  r.setProperty('--font-brand-tracking',   fs.brand.tracking);
+}
+
+// Map the flat Supabase column shape <-> nested client shape.
+function rowToFontSettings(row) {
+  if (!row) return null;
+  return {
+    body: {
+      family:   row.font_body          ?? DEFAULT_FONT_SETTINGS.body.family,
+      weight:   row.font_body_weight   ?? DEFAULT_FONT_SETTINGS.body.weight,
+      tracking: row.font_body_tracking ?? DEFAULT_FONT_SETTINGS.body.tracking,
+    },
+    display: {
+      family:   row.font_display          ?? DEFAULT_FONT_SETTINGS.display.family,
+      weight:   row.font_display_weight   ?? DEFAULT_FONT_SETTINGS.display.weight,
+      tracking: row.font_display_tracking ?? DEFAULT_FONT_SETTINGS.display.tracking,
+    },
+    brand: {
+      family:   row.font_brand          ?? DEFAULT_FONT_SETTINGS.brand.family,
+      weight:   row.font_brand_weight   ?? DEFAULT_FONT_SETTINGS.brand.weight,
+      tracking: row.font_brand_tracking ?? DEFAULT_FONT_SETTINGS.brand.tracking,
+    },
+  };
+}
+
+function fontSettingsToRow(fs) {
+  return {
+    id:                    SITE_SETTINGS_ID,
+    font_body:             fs.body.family,
+    font_display:          fs.display.family,
+    font_brand:            fs.brand.family,
+    font_body_weight:      fs.body.weight,
+    font_display_weight:   fs.display.weight,
+    font_brand_weight:     fs.brand.weight,
+    font_body_tracking:    fs.body.tracking,
+    font_display_tracking: fs.display.tracking,
+    font_brand_tracking:   fs.brand.tracking,
+    updated_at:            new Date().toISOString(),
+  };
+}
 
 // Shape we keep in state — flat & friendly, mirrors the file sections.
 function buildInitial() {
@@ -128,6 +225,23 @@ function snapshotOf(s) {
 export function ContentProvider({ children }) {
   const [state, setState] = useState(() => loadStored() ?? buildInitial());
 
+  // --- Typography settings ------------------------------------------------
+  // Separate state from the editable content so font changes don't flip the
+  // TOPICS/PROFILE dirty flag. Paint them onto :root synchronously on first
+  // render so there's no FOUC when Supabase has non-default fonts.
+  const [fontSettings, setFontSettings] = useState(() =>
+    loadStoredFontSettings() ?? DEFAULT_FONT_SETTINGS
+  );
+
+  useEffect(() => {
+    applyFontSettingsToRoot(fontSettings);
+    try {
+      localStorage.setItem(FONT_SETTINGS_KEY, JSON.stringify(fontSettings));
+    } catch {
+      /* quota / private mode — ignore */
+    }
+  }, [fontSettings]);
+
   // --- Cloud sync state --------------------------------------------------
   // syncStatus: 'idle' | 'loading' | 'saving' | 'saved' | 'error'
   const [syncStatus, setSyncStatus] = useState('idle');
@@ -178,7 +292,7 @@ export function ContentProvider({ children }) {
       setSyncStatus('loading');
       setSyncError(null);
       try {
-        const [topicsRes, projectsRes] = await Promise.all([
+        const [topicsRes, projectsRes, settingsRes] = await Promise.all([
           supabase
             .from('topics')
             .select('id, label, order_index')
@@ -187,13 +301,30 @@ export function ContentProvider({ children }) {
             .from('projects')
             .select('id, topic_id, title, subtitle, url, image, image_position, order_index')
             .order('order_index', { ascending: true }),
+          supabase
+            .from('site_settings')
+            .select('*')
+            .eq('id', SITE_SETTINGS_ID)
+            .maybeSingle(),
         ]);
 
         if (topicsRes.error)   throw topicsRes.error;
         if (projectsRes.error) throw projectsRes.error;
+        // settingsRes.error is tolerated — table may not exist yet on older
+        // Supabase projects that haven't re-run schema.sql.
+        if (settingsRes?.error) {
+          console.warn('[supabase] site_settings fetch failed (did you re-run schema.sql?):', settingsRes.error.message);
+        }
 
         const topicsData   = topicsRes.data   || [];
         const projectsData = projectsRes.data || [];
+
+        // Apply typography first so the grid renders with the right fonts.
+        const settingsRow = settingsRes?.data || null;
+        if (settingsRow && !cancelled) {
+          const fs = rowToFontSettings(settingsRow);
+          if (fs) setFontSettings(fs);
+        }
 
         if (topicsData.length === 0) {
           // Empty cloud — keep local state untouched, user can push later.
@@ -338,6 +469,25 @@ export function ContentProvider({ children }) {
       return { ...s, TOPICS };
     });
   }, []);
+
+  // Upsert the current typography settings to Supabase. Mirrors the content
+  // save flow but touches only the singleton site_settings row. Returns the
+  // same `{ ok, error? }` shape for consistent UI handling.
+  const saveFontSettings = useCallback(async () => {
+    if (!hasSupabase) {
+      return { ok: false, error: 'Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).' };
+    }
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert(fontSettingsToRow(fontSettings), { onConflict: 'id' });
+      if (error) throw error;
+      return { ok: true };
+    } catch (err) {
+      console.error('[supabase] site_settings save failed:', err);
+      return { ok: false, error: err.message || String(err) };
+    }
+  }, [fontSettings]);
 
   // Push the current TOPICS + projects to Supabase. Uses `upsert` on `id` so
   // existing rows are updated in-place and new rows are inserted. Rows that
@@ -518,6 +668,10 @@ export function ContentProvider({ children }) {
     moveProject,
     moveProjectTo,
     reset,
+    // typography
+    fontSettings,
+    setFontSettings,
+    saveFontSettings,
     // cloud sync
     saveToCloud,
     syncStatus,

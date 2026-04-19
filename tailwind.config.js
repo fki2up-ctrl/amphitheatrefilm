@@ -13,11 +13,13 @@ export default {
         },
       },
       fontFamily: {
-        // DM Sans is the primary UI typeface across the entire site.
-        sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        // Handwritten brand signature — used once in the intro sequence.
-        hand: ['"Sacramento"', 'ui-serif', 'cursive'],
+        // All three font roles read from CSS custom properties defined in
+        // src/index.css so the editor can hot-swap typography live without a
+        // rebuild. Defaults live in :root; Supabase-backed overrides get
+        // applied by the content store at runtime.
+        sans:    ['var(--font-body)',    'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'ui-serif',      'serif'],
+        hand:    ['var(--font-brand)',   'ui-serif',      'cursive'],
       },
       letterSpacing: {
         widest2: '0.3em',

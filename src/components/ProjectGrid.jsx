@@ -22,7 +22,7 @@ export default function ProjectGrid({ onOpen }) {
             className="flex items-end justify-between gap-6 mb-8 sm:mb-10"
           >
             <div>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl leading-tight">
+              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl leading-tight">
                 {cat.label}
               </h2>
             </div>

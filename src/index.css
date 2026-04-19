@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+   Typography roles — three semantic font slots driven by CSS custom
+   properties so the editor can swap fonts live without rebuilding CSS.
+   Tailwind's font-sans / font-display / font-hand utilities read these.
+--------------------------------------------------------------------------- */
+:root {
+  --font-body:      "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display:   "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-brand:     "Sacramento", ui-serif, cursive;
+
+  --font-body-weight:      400;
+  --font-display-weight:   500;
+  --font-brand-weight:     400;
+
+  --font-body-tracking:    0em;
+  --font-display-tracking: -0.01em;
+  --font-brand-tracking:   0.005em;
+}
+
 html {
   scroll-behavior: smooth;
 }

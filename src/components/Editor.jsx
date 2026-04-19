@@ -25,6 +25,7 @@ import {
 import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/content';
 import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
 import { supabase, hasSupabase } from '../lib/supabase';
+import TypographySection from './TypographySection';
 
 // Preview thumbnails in the editor sidebar are small; 400 px is ample even
 // at 2× DPR. `previewSrc` returns the optimized Cloudinary URL when possible,
@@ -186,6 +187,7 @@ export default function Editor({ open, onClose }) {
               <>
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto pretty-scroll px-5 py-5 space-y-8">
+                  <TypographySection />
                   <ProfileSection c={c} />
                   <FeaturedVideoSection c={c} />
                   <ContactSection c={c} />

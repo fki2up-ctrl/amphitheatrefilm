@@ -38,7 +38,7 @@ export default function VideoModal({ project, onClose }) {
               <p className="text-[10px] tracking-widest2 uppercase text-white/45">
                 {project.categoryLabel}
               </p>
-              <h3 className="mt-1 text-xl sm:text-2xl leading-tight truncate">
+              <h3 className="font-display mt-1 text-xl sm:text-2xl leading-tight truncate">
                 {project.title}
               </h3>
               {project.subtitle && (
