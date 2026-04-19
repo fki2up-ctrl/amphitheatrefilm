@@ -200,14 +200,17 @@ export default function Editor({ open, onClose }) {
                   </p>
                 </div>
 
-                {/* Supabase cloud-sync banner (only when configured) */}
-                {c.hasSupabase && (
-                  <SyncBanner
-                    status={c.syncStatus}
-                    error={c.syncError}
-                    isDirty={c.isDirty}
-                  />
-                )}
+                {/* Supabase cloud-sync banner — always visible so you can
+                    tell at a glance whether cloud sync is wired up. When the
+                    env vars are missing (common on first Vercel deploy) it
+                    renders in an "unconfigured" state with setup guidance
+                    instead of silently hiding. */}
+                <SyncBanner
+                  status={c.syncStatus}
+                  error={c.syncError}
+                  isDirty={c.isDirty}
+                  hasSupabase={c.hasSupabase}
+                />
 
                 {/* Footer actions */}
                 <footer className="flex items-center gap-2 px-5 py-4 border-t border-white/10">
@@ -1005,7 +1008,27 @@ function Field({ label, value, onChange, placeholder, textarea, compact, hint })
 //   error    → "Cloud sync failed"     (with message)
 //   idle     → "Connected to Supabase" (quiet baseline)
 // ---------------------------------------------------------------------------
-function SyncBanner({ status, error, isDirty }) {
+function SyncBanner({ status, error, isDirty, hasSupabase }) {
+  // Supabase env vars not provided — usually means the Vercel deployment
+  // hasn't had VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY added yet. Show
+  // a clear "not connected" state so nothing silently fails.
+  if (!hasSupabase) {
+    return (
+      <div className="px-5 py-2 border-t text-[11px] leading-snug bg-amber-500/10 border-amber-400/20 text-amber-200/90 flex items-start gap-2">
+        <CloudOff className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        <span className="flex-1">
+          <span className="font-medium block">Cloud sync not configured</span>
+          <span className="text-amber-200/70">
+            Set <code className="text-amber-100">VITE_SUPABASE_URL</code> and{' '}
+            <code className="text-amber-100">VITE_SUPABASE_ANON_KEY</code> in your
+            deploy environment (Vercel → Settings → Environment Variables), then
+            redeploy. Edits are still saving to your browser in the meantime.
+          </span>
+        </span>
+      </div>
+    );
+  }
+
   // When the user has unsaved local edits and we're in the idle state, the
   // banner switches to an amber "needs publishing" tone so the dot on the
   // Save button has matching context here.
