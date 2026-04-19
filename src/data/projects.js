@@ -112,6 +112,8 @@ export const TOPICS = [
       title:    "Louis Vuitton — Fall/Summer 2025",
       subtitle: "/w BamBam",
       url:      "https://www.instagram.com/reel/DGx4WxHz_dH/",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776528821/Screenshot_2569-04-18_at_23.08.41_ujcpei.png",
+      imagePosition: "53% 63%",
     }),
     project({
       title:    "Gucci — La Famiglia",
