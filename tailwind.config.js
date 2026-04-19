@@ -17,7 +17,7 @@ export default {
         sans: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         display: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         // Handwritten brand signature — used once in the intro sequence.
-        hand: ['"Caveat"', 'ui-serif', 'cursive'],
+        hand: ['"Sacramento"', 'ui-serif', 'cursive'],
       },
       letterSpacing: {
         widest2: '0.3em',

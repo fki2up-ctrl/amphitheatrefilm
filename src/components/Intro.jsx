@@ -146,9 +146,9 @@ function PhaseTwo() {
     >
       <h1
         className="
-          font-hand font-medium
+          font-hand font-normal
           text-white
-          text-[clamp(1.5rem,4.2vw,2.75rem)]
+          text-[clamp(2rem,5.6vw,3.75rem)]
           leading-[1.1] tracking-[0.005em]
           [text-shadow:0_1px_24px_rgba(255,235,200,0.14)]
         "
