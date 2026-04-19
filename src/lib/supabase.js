@@ -23,9 +23,17 @@ export const hasSupabase = Boolean(url && key);
 
 export const supabase = hasSupabase
   ? createClient(url, key, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      // Small default timeout-ish: keep the client lean; we don't use
-      // realtime subscriptions yet.
+      auth: {
+        // Persist the session across tabs & reloads (localStorage by default)
+        // so the editor stays "logged in" after a magic-link click.
+        persistSession: true,
+        autoRefreshToken: true,
+        // When the user clicks the magic-link email, Supabase redirects back
+        // to the site with the tokens in the URL hash. This flag tells the
+        // client to parse them on page load and store the session.
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+      },
       realtime: { params: { eventsPerSecond: 2 } },
     })
   : null;

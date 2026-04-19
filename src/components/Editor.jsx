@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/content';
 import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
+import { supabase, hasSupabase } from '../lib/supabase';
 
 // Preview thumbnails in the editor sidebar are small; 400 px is ample even
 // at 2× DPR. `previewSrc` returns the optimized Cloudinary URL when possible,
@@ -35,24 +36,11 @@ const previewSrc = (url, width = 400) => optimizeCloudinaryUrl(url || '', width)
 // Changes persist to localStorage automatically. "Export" produces the
 // equivalent projects.js source for permanent commits.
 //
-// Access is gated by a password. We never store the password in source —
-// only its SHA-256 hash. Unlock state lives in sessionStorage so it survives
-// within a tab but clears when the tab closes. (Reminder: any client-side
-// password is obfuscation, not real security. For true access control you'd
-// need a server.)
+// Access is gated by Supabase Auth (magic-link email login). Only users
+// pre-added to the Supabase auth.users table can sign in — public sign-ups
+// are disabled in the Supabase dashboard. Sessions persist across reloads
+// via the Supabase client's built-in localStorage storage.
 // ---------------------------------------------------------------------------
-
-const PASSWORD_HASH_SHA256 =
-  '2e38a37c249c989efb748093d616f9dfe8ad2a1047c8615295e919e93748b093';
-const UNLOCK_KEY = 'amphitheatre:editor-unlocked:v1';
-
-async function sha256Hex(text) {
-  const buf = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
 
 export default function Editor({ open, onClose }) {
   const c = useContent();
@@ -61,8 +49,35 @@ export default function Editor({ open, onClose }) {
   const [saveStatus, setSaveStatus] = useState('idle');
   const [saveError, setSaveError] = useState('');
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [gitInfo, setGitInfo] = useState(null);
+
+  // --- Supabase Auth session ---------------------------------------------
+  // `session` is `null` when signed out and an object containing the user
+  // when signed in. The editor drawer renders the magic-link form until
+  // the session is populated.
+  const [session, setSession] = useState(null);
+  const [authLoaded, setAuthLoaded] = useState(!hasSupabase);
+
+  useEffect(() => {
+    if (!hasSupabase) return;
+    let mounted = true;
+
+    // Read the current session synchronously (from localStorage if present).
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session ?? null);
+      setAuthLoaded(true);
+    });
+
+    // Subscribe to login / logout events so the UI reacts instantly.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s ?? null);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   const doSave = async () => {
     setSaveStatus('saving');
@@ -111,30 +126,19 @@ export default function Editor({ open, onClose }) {
     }
   };
 
-  // Save writes directly to src/data/projects.js via the dev endpoint.
-  // No password re-prompt — the editor is already unlocked.
   const handleSave = () => doSave();
-  const [unlocked, setUnlocked] = useState(() => {
-    try {
-      return sessionStorage.getItem(UNLOCK_KEY) === '1';
-    } catch {
-      return false;
+
+  // Unlocked = Supabase session present (real auth) OR Supabase isn't
+  // configured at all (dev / preview without env vars — drawer opens freely
+  // so you can still edit locally).
+  const unlocked = !hasSupabase || Boolean(session);
+
+  const signOut = async () => {
+    if (hasSupabase) {
+      try { await supabase.auth.signOut(); } catch { /* ignore */ }
     }
-  });
-
-  const lock = () => {
-    try {
-      sessionStorage.removeItem(UNLOCK_KEY);
-    } catch { /* ignore */ }
-    setUnlocked(false);
+    setSession(null);
     onClose();
-  };
-
-  const handleUnlock = () => {
-    try {
-      sessionStorage.setItem(UNLOCK_KEY, '1');
-    } catch { /* ignore */ }
-    setUnlocked(true);
   };
 
   return (
@@ -226,12 +230,12 @@ export default function Editor({ open, onClose }) {
                     Reset
                   </button>
                   <button
-                    onClick={lock}
-                    title="Lock editor & close"
+                    onClick={signOut}
+                    title={hasSupabase ? 'Sign out & close' : 'Close editor'}
                     className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-xs text-white/70 hover:text-white hover:border-white/40"
                   >
                     <Lock className="w-3.5 h-3.5" />
-                    Lock
+                    {hasSupabase ? 'Sign out' : 'Close'}
                   </button>
                   <div className="ml-auto flex items-center gap-2">
                     <button
@@ -302,7 +306,7 @@ export default function Editor({ open, onClose }) {
                 )}
               </>
             ) : (
-              <PasswordGate onUnlock={handleUnlock} />
+              <MagicLinkGate authLoaded={authLoaded} />
             )}
           </motion.aside>
 
@@ -310,15 +314,6 @@ export default function Editor({ open, onClose }) {
             open={exportOpen}
             onClose={() => setExportOpen(false)}
             source={serializeToProjectsJs(c.state)}
-          />
-
-          <ConfirmPasswordModal
-            open={confirmOpen}
-            onClose={() => setConfirmOpen(false)}
-            onConfirmed={() => {
-              setConfirmOpen(false);
-              doSave();
-            }}
           />
         </>
       )}
@@ -1214,36 +1209,70 @@ function CropPicker({ src, position, onChange }) {
 }
 
 // ---------------------------------------------------------------------------
-// Password gate — shown when the Editor is opened but not yet unlocked.
-// Verifies the input's SHA-256 against PASSWORD_HASH_SHA256 so the plain
-// password never appears in source. Not true security (the hash + logic are
-// client-side and inspectable) but a solid casual lock.
+// MagicLinkGate — the login screen shown when no Supabase session is active.
+//
+// Flow:
+//   1. User types their email → clicks "Send magic link".
+//   2. Supabase emails a one-time link that redirects back to this origin.
+//   3. On return, the supabase client (with `detectSessionInUrl: true`)
+//      parses the tokens from the URL hash, stores the session, and fires
+//      an `onAuthStateChange` event. The Editor listens for that and flips
+//      `unlocked` to true automatically — no extra plumbing needed here.
+//
+// Only pre-created users (Supabase → Authentication → Users) can log in,
+// because we disabled public sign-ups in the dashboard.
+// ---------------------------------------------------------------------------
 
-function PasswordGate({ onUnlock }) {
-  const [value, setValue] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+function MagicLinkGate({ authLoaded }) {
+  const [email, setEmail]     = useState('');
+  const [status, setStatus]   = useState('idle'); // 'idle' | 'sending' | 'sent' | 'error'
+  const [error, setError]     = useState('');
 
-  // Clear error as the user types.
-  useEffect(() => {
-    if (error) setError('');
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  // While the first `getSession()` call is in flight we don't know whether
+  // the user is already signed in — show a subtle skeleton instead of
+  // flashing the login form on every page load.
+  if (!authLoaded) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-[12px] text-white/45">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking session…
+      </div>
+    );
+  }
+
+  if (!hasSupabase) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-8 text-center text-white/70">
+        <CloudOff className="w-6 h-6 mb-3 text-amber-300/80" />
+        <h3 className="text-base mb-1">Supabase not configured</h3>
+        <p className="text-[12px] text-white/50 max-w-[280px] leading-relaxed">
+          Set <code className="text-white/70">VITE_SUPABASE_URL</code> and{' '}
+          <code className="text-white/70">VITE_SUPABASE_ANON_KEY</code> in your
+          deployment environment, then redeploy.
+        </p>
+      </div>
+    );
+  }
 
   const submit = async (e) => {
     e?.preventDefault?.();
-    if (!value || busy) return;
-    setBusy(true);
-    try {
-      const hash = await sha256Hex(value);
-      if (hash === PASSWORD_HASH_SHA256) {
-        onUnlock();
-      } else {
-        setError('Incorrect password.');
-      }
-    } catch {
-      setError('Could not verify password in this browser.');
-    } finally {
-      setBusy(false);
+    if (!email || status === 'sending') return;
+    setStatus('sending');
+    setError('');
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        // Redirect back to the exact origin the user is on (dev or prod).
+        emailRedirectTo: window.location.origin,
+        // Don't auto-create accounts for unknown emails. Only users we've
+        // pre-added in Supabase can sign in.
+        shouldCreateUser: false,
+      },
+    });
+    if (err) {
+      setStatus('error');
+      setError(err.message || 'Could not send magic link.');
+    } else {
+      setStatus('sent');
     }
   };
 
@@ -1255,138 +1284,53 @@ function PasswordGate({ onUnlock }) {
       <div className="w-14 h-14 rounded-full border border-white/15 flex items-center justify-center mb-5">
         <Lock className="w-5 h-5 text-white/70" />
       </div>
-      <h3 className="text-lg mb-1">Protected content</h3>
+      <h3 className="text-lg mb-1">Sign in to edit</h3>
       <p className="text-[12px] text-white/50 max-w-[300px] leading-relaxed mb-6">
-        Enter the editor password to change the profile, topics, or projects
-        on this site.
+        Enter your email and we'll send you a one-time login link. Only
+        approved addresses can sign in.
       </p>
 
       <input
-        type="password"
+        type="email"
         autoFocus
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Password"
-        className="w-full max-w-[300px] bg-ink-800/80 border border-white/10 rounded-md px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors text-center"
+        autoComplete="email"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          if (status === 'error') setStatus('idle');
+        }}
+        placeholder="you@example.com"
+        disabled={status === 'sending' || status === 'sent'}
+        className="w-full max-w-[300px] bg-ink-800/80 border border-white/10 rounded-md px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors text-center disabled:opacity-60"
       />
 
-      {error && (
-        <p className="mt-3 text-[12px] text-red-300/90">{error}</p>
+      {status === 'error' && error && (
+        <p className="mt-3 text-[12px] text-red-300/90 max-w-[300px]">{error}</p>
       )}
 
-      <button
-        type="submit"
-        disabled={!value || busy}
-        className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white text-ink-950 text-sm font-medium hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <LockOpen className="w-4 h-4" />
-        {busy ? 'Checking…' : 'Unlock'}
-      </button>
+      {status === 'sent' ? (
+        <div className="mt-5 w-full max-w-[300px] rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-[12px] text-emerald-200/90">
+          <Check className="w-4 h-4 inline-block -mt-0.5 mr-1" />
+          <span className="font-medium">Magic link sent.</span> Check{' '}
+          <span className="text-emerald-100">{email}</span> and click the link
+          to finish signing in. You can close this tab — the link opens a
+          new one.
+        </div>
+      ) : (
+        <button
+          type="submit"
+          disabled={!email || status === 'sending'}
+          className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white text-ink-950 text-sm font-medium hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <LockOpen className="w-4 h-4" />
+          {status === 'sending' ? 'Sending…' : 'Send magic link'}
+        </button>
+      )}
 
       <p className="mt-8 text-[10px] text-white/30 max-w-[280px] leading-relaxed">
-        Note: client-side passwords are a casual lock, not real security. If
-        you need strict access control, gate the site behind a host login.
+        Secured by Supabase Auth. Links expire after one use and can only
+        open this site.
       </p>
     </form>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Confirm-password modal — shown every time the user hits "Save" so an
-// unattended unlocked drawer can't be used to overwrite the file.
-
-function ConfirmPasswordModal({ open, onClose, onConfirmed }) {
-  const [value, setValue] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  // Reset fields whenever the modal opens fresh.
-  useEffect(() => {
-    if (open) {
-      setValue('');
-      setError('');
-      setBusy(false);
-    }
-  }, [open]);
-
-  const submit = async (e) => {
-    e?.preventDefault?.();
-    if (!value || busy) return;
-    setBusy(true);
-    try {
-      const hash = await sha256Hex(value);
-      if (hash === PASSWORD_HASH_SHA256) {
-        onConfirmed();
-      } else {
-        setError('Incorrect password.');
-      }
-    } catch {
-      setError('Could not verify password.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          onClick={onClose}
-          className="fixed inset-0 z-[105] bg-black/70 flex items-center justify-center p-4"
-        >
-          <motion.form
-            onSubmit={submit}
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-ink-900 border border-white/10 rounded-xl p-6 text-center"
-          >
-            <div className="w-12 h-12 mx-auto rounded-full border border-white/15 flex items-center justify-center mb-4">
-              <Lock className="w-4 h-4 text-white/70" />
-            </div>
-            <h3 className="text-base mb-1">Confirm to save</h3>
-            <p className="text-[12px] text-white/55 mb-5 leading-relaxed">
-              Re-enter the editor password to write these changes to the site's
-              content file.
-            </p>
-            <input
-              type="password"
-              autoFocus
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                if (error) setError('');
-              }}
-              placeholder="Password"
-              className="w-full bg-ink-800/80 border border-white/10 rounded-md px-3 py-2.5 text-sm text-white/90 placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors text-center"
-            />
-            {error && (
-              <p className="mt-3 text-[12px] text-red-300/90">{error}</p>
-            )}
-            <div className="mt-5 flex items-center gap-2 justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-white/10 text-xs text-white/70 hover:text-white hover:border-white/40"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!value || busy}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-ink-950 text-xs font-medium hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {busy ? 'Checking…' : 'Confirm & save'}
-              </button>
-            </div>
-          </motion.form>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
