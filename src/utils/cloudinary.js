@@ -90,6 +90,41 @@ export function optimizeCloudinaryUrl(rawUrl, width = 1200) {
 }
 
 /**
+ * Normalise a Cloudinary URL for *storage* in a database.
+ * Injects `f_auto,q_auto` (no width) so the stored URL is format/quality-smart
+ * but callers can still layer a `w_*` transform at render time via
+ * `optimizeCloudinaryUrl(stored, width)` — transform merging dedupes safely.
+ *
+ * Non-Cloudinary / non-`/upload/` URLs pass through unchanged.
+ */
+export function normalizeCloudinaryForStorage(rawUrl) {
+  if (!isCloudinaryUrl(rawUrl)) return rawUrl;
+
+  const markerIdx = rawUrl.indexOf(UPLOAD_MARKER);
+  const head      = rawUrl.slice(0, markerIdx + UPLOAD_MARKER.length);
+  const tail      = rawUrl.slice(markerIdx + UPLOAD_MARKER.length);
+
+  const firstSlash = tail.indexOf('/');
+  if (firstSlash === -1) return `${head}f_auto,q_auto/${tail}`;
+
+  const first = tail.slice(0, firstSlash);
+  const rest  = tail.slice(firstSlash + 1);
+
+  if (looksLikeTransformSegment(first)) {
+    // Already has a transform chain — add only the missing pieces.
+    const hasFAuto = /(^|,)f_auto(,|$)/.test(first);
+    const hasQAuto = /(^|,)q_auto(,|$)/.test(first);
+    if (hasFAuto && hasQAuto) return rawUrl;
+    const extras = [!hasFAuto && 'f_auto', !hasQAuto && 'q_auto']
+      .filter(Boolean)
+      .join(',');
+    return `${head}${first},${extras}/${rest}`;
+  }
+
+  return `${head}f_auto,q_auto/${tail}`;
+}
+
+/**
  * Generate a tiny, heavily-blurred placeholder URL for the LQIP ("blur-up")
  * technique. Roughly 1–3 KB per image, safe to ship inline as a background.
  */

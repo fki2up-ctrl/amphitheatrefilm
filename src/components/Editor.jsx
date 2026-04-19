@@ -18,6 +18,9 @@ import {
   RefreshCw,
   ChevronDown,
   GripVertical,
+  Cloud,
+  CloudOff,
+  Loader2,
 } from 'lucide-react';
 import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/content';
 import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
@@ -65,20 +68,46 @@ export default function Editor({ open, onClose }) {
     setSaveStatus('saving');
     setSaveError('');
     setGitInfo(null);
+
+    // --- 1. Cloud sync (Supabase) -----------------------------------------
+    // When Supabase is configured, this is the primary write path — the
+    // deployed site reads from Supabase, so this is what actually updates
+    // production. Runs in parallel with the local file-write path below.
+    const cloudPromise = c.hasSupabase
+      ? c.saveToCloud().catch((err) => ({ ok: false, error: err.message || String(err) }))
+      : Promise.resolve({ ok: true, skipped: true });
+
+    // --- 2. Local dev file write + GitHub push (dev-server only) ----------
     const source = serializeToProjectsJs(c.state);
-    const result = await saveProjectsJs(source);
-    if (result.ok) {
+    const localResult = await saveProjectsJs(source);
+
+    const cloudResult = await cloudPromise;
+
+    // Prefer local result for status text because it carries the richest
+    // UX (notSupported → Export fallback). But surface cloud errors too.
+    if (localResult.ok) {
       setSaveStatus('saved');
-      setGitInfo(result.git || null);
+      setGitInfo(localResult.git || null);
       setTimeout(() => setSaveStatus('idle'), 3200);
-    } else if (result.notSupported) {
-      // Production build (no dev endpoint) — fall back to Export modal.
-      setSaveStatus('unsupported');
-      setExportOpen(true);
-      setTimeout(() => setSaveStatus('idle'), 2200);
+    } else if (localResult.notSupported) {
+      // Production build (no dev endpoint). If cloud save succeeded, treat
+      // the whole operation as a success — the site reads from Supabase.
+      if (cloudResult.ok && !cloudResult.skipped) {
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 3200);
+      } else {
+        setSaveStatus('unsupported');
+        setExportOpen(true);
+        setTimeout(() => setSaveStatus('idle'), 2200);
+      }
     } else {
       setSaveStatus('error');
-      setSaveError(result.error || 'Save failed');
+      setSaveError(localResult.error || 'Save failed');
+    }
+
+    if (!cloudResult.ok && !cloudResult.skipped) {
+      // eslint-disable-next-line no-console
+      console.warn('[editor] cloud save error:', cloudResult.error);
     }
   };
 
@@ -171,6 +200,15 @@ export default function Editor({ open, onClose }) {
                   </p>
                 </div>
 
+                {/* Supabase cloud-sync banner (only when configured) */}
+                {c.hasSupabase && (
+                  <SyncBanner
+                    status={c.syncStatus}
+                    error={c.syncError}
+                    isDirty={c.isDirty}
+                  />
+                )}
+
                 {/* Footer actions */}
                 <footer className="flex items-center gap-2 px-5 py-4 border-t border-white/10">
                   <button
@@ -204,8 +242,17 @@ export default function Editor({ open, onClose }) {
                     <button
                       onClick={handleSave}
                       disabled={saveStatus === 'saving'}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-ink-950 text-xs font-medium hover:bg-white/90 disabled:opacity-60"
+                      title={c.isDirty ? 'You have unsaved changes' : 'All changes saved'}
+                      className="relative inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-ink-950 text-xs font-medium hover:bg-white/90 disabled:opacity-60"
                     >
+                      {/* Dirty dot — only while idle; save-in-progress / saved
+                          states already communicate status themselves. */}
+                      {c.isDirty && saveStatus === 'idle' && (
+                        <span
+                          aria-label="Unsaved changes"
+                          className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-ink-950 animate-pulse"
+                        />
+                      )}
                       {saveStatus === 'saved' ? (
                         <><Check className="w-3.5 h-3.5" /> Saved</>
                       ) : saveStatus === 'saving' ? (
@@ -213,7 +260,7 @@ export default function Editor({ open, onClose }) {
                       ) : saveStatus === 'error' ? (
                         <><AlertCircle className="w-3.5 h-3.5" /> Retry</>
                       ) : (
-                        <><SaveIcon className="w-3.5 h-3.5" /> Save</>
+                        <><SaveIcon className="w-3.5 h-3.5" /> {c.isDirty ? 'Save changes' : 'Save'}</>
                       )}
                     </button>
                   </div>
@@ -945,6 +992,63 @@ function Field({ label, value, onChange, placeholder, textarea, compact, hint })
         </span>
       )}
     </label>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SyncBanner — thin, always-visible strip under the form that surfaces the
+// state of the Supabase connection. Only mounted when `hasSupabase` is true.
+//
+//   loading  → "Syncing from cloud…"   (initial fetch on mount)
+//   saving   → "Syncing to cloud…"     (push in progress)
+//   saved    → "Saved to cloud"        (2.6 s success toast)
+//   error    → "Cloud sync failed"     (with message)
+//   idle     → "Connected to Supabase" (quiet baseline)
+// ---------------------------------------------------------------------------
+function SyncBanner({ status, error, isDirty }) {
+  // When the user has unsaved local edits and we're in the idle state, the
+  // banner switches to an amber "needs publishing" tone so the dot on the
+  // Save button has matching context here.
+  const showDirty = isDirty && (status === 'idle' || status === 'error');
+
+  const palette = showDirty
+    ? 'bg-amber-500/10 border-amber-400/20 text-amber-200/90'
+    : {
+        loading: 'bg-blue-500/10 border-blue-400/20 text-blue-200/90',
+        saving:  'bg-blue-500/10 border-blue-400/20 text-blue-200/90',
+        saved:   'bg-emerald-500/10 border-emerald-400/20 text-emerald-200/90',
+        error:   'bg-red-500/10 border-red-400/20 text-red-200/90',
+        idle:    'bg-white/[0.03] border-white/10 text-white/55',
+      }[status] || 'bg-white/[0.03] border-white/10 text-white/55';
+
+  const label = showDirty
+    ? 'Unsaved changes — hit Save to publish'
+    : {
+        loading: 'Syncing from cloud…',
+        saving:  'Syncing to cloud…',
+        saved:   'Saved to cloud',
+        error:   'Cloud sync failed',
+        idle:    'Connected to Supabase',
+      }[status] || 'Connected to Supabase';
+
+  const Icon = status === 'loading' || status === 'saving'
+    ? Loader2
+    : status === 'error' && !showDirty
+      ? CloudOff
+      : status === 'saved'
+        ? Check
+        : Cloud;
+
+  const spin = (status === 'loading' || status === 'saving') ? 'animate-spin' : '';
+
+  return (
+    <div className={`px-5 py-2 border-t text-[11px] leading-snug flex items-center gap-2 ${palette}`}>
+      <Icon className={`w-3.5 h-3.5 shrink-0 ${spin}`} />
+      <span className="font-medium">{label}</span>
+      {status === 'error' && error && !showDirty && (
+        <span className="text-red-200/70 truncate">— {error}</span>
+      )}
+    </div>
   );
 }
 

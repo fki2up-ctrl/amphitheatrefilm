@@ -19,6 +19,16 @@ import {
 } from 'react';
 import * as defaults from '../data/projects';
 import { parseYouTubeId } from '../lib/embed';
+import { supabase, hasSupabase } from '../lib/supabase';
+import { normalizeCloudinaryForStorage } from '../utils/cloudinary';
+
+// Stable UUID for a topic or project row. Native crypto.randomUUID() when
+// available (all modern browsers + Node); falls back to a decent-enough
+// time+random string for ancient environments.
+function genId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
 
 const STORAGE_KEY = 'amphitheatre:content:v1';
 
@@ -29,8 +39,10 @@ function buildInitial() {
     CONTACT:    { ...defaults.CONTACT },
     BACKGROUND: { ...defaults.BACKGROUND },
     TOPICS: defaults.TOPICS.map((t) => ({
+      id: genId(),
       label: t.label,
       projects: t.projects.map((p) => ({
+        id: genId(),
         title:    p.title    ?? '',
         subtitle: p.subtitle ?? '',
         url:      p.url      ?? '',
@@ -49,13 +61,27 @@ function loadStored() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.PROFILE || !Array.isArray(parsed.TOPICS)) return null;
+    const defaultState = buildInitial();
     // Forward-compat: merge any newly-added default fields into the stored
     // shape so schema additions (e.g. siteTitle, favicon) light up for users
-    // who already have earlier local edits.
-    const defaultState = buildInitial();
+    // who already have earlier local edits. Also back-fill stable IDs on
+    // topics & projects saved before the Supabase migration.
+    const TOPICS = parsed.TOPICS.map((t) => ({
+      id: t.id || genId(),
+      label: t.label,
+      projects: (t.projects || []).map((p) => ({
+        id: p.id || genId(),
+        title: p.title ?? '',
+        subtitle: p.subtitle ?? '',
+        url: p.url ?? '',
+        image: p.image ?? '',
+        imagePosition: p.imagePosition ?? '50% 50%',
+      })),
+    }));
     return {
       ...defaultState,
       ...parsed,
+      TOPICS,
       PROFILE:    { ...defaultState.PROFILE,    ...parsed.PROFILE },
       CONTACT:    { ...defaultState.CONTACT,    ...parsed.CONTACT },
       BACKGROUND: { ...defaultState.BACKGROUND, ...parsed.BACKGROUND },
@@ -86,8 +112,50 @@ function autoThumbnail(url) {
 
 const ContentContext = createContext(null);
 
+// Stable serialisation used for the dirty-check. We fingerprint the full
+// editable state (TOPICS + PROFILE + CONTACT + BACKGROUND) so any change a
+// user makes in the editor flips `isDirty`, regardless of whether that
+// particular field currently syncs to Supabase or only to projects.js.
+function snapshotOf(s) {
+  return JSON.stringify({
+    TOPICS: s.TOPICS,
+    PROFILE: s.PROFILE,
+    CONTACT: s.CONTACT,
+    BACKGROUND: s.BACKGROUND,
+  });
+}
+
 export function ContentProvider({ children }) {
   const [state, setState] = useState(() => loadStored() ?? buildInitial());
+
+  // --- Cloud sync state --------------------------------------------------
+  // syncStatus: 'idle' | 'loading' | 'saving' | 'saved' | 'error'
+  const [syncStatus, setSyncStatus] = useState('idle');
+  const [syncError, setSyncError]   = useState(null);
+
+  // --- Dirty tracking ----------------------------------------------------
+  // `cleanSnapshot` = serialised state at the last "publish" point (initial
+  // load, after cloud fetch, or after a successful Save). Any deviation from
+  // this string means the user has unsaved changes.
+  const [cleanSnapshot, setCleanSnapshot] = useState(() => snapshotOf(state));
+  const isDirty = useMemo(
+    () => snapshotOf(state) !== cleanSnapshot,
+    [state, cleanSnapshot]
+  );
+
+  // Warn the user if they try to close the tab / navigate away with unsaved
+  // edits. Browsers ignore the custom message but still show their own
+  // generic "Leave site?" prompt. Registered at the provider level so it
+  // fires even when the Editor drawer is closed.
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = ''; // required for Chrome
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   // Persist on every change.
   useEffect(() => {
@@ -98,7 +166,85 @@ export function ContentProvider({ children }) {
     }
   }, [state]);
 
-  const reset = useCallback(() => setState(buildInitial()), []);
+  // One-shot fetch from Supabase on mount. If the cloud has data, it wins
+  // over whatever's in localStorage (cloud is the source of truth once
+  // connected). If the cloud is empty or unreachable, we keep the local
+  // state and the user can push it up via Save.
+  useEffect(() => {
+    if (!hasSupabase) return;
+    let cancelled = false;
+
+    (async () => {
+      setSyncStatus('loading');
+      setSyncError(null);
+      try {
+        const [topicsRes, projectsRes] = await Promise.all([
+          supabase
+            .from('topics')
+            .select('id, label, order_index')
+            .order('order_index', { ascending: true }),
+          supabase
+            .from('projects')
+            .select('id, topic_id, title, subtitle, url, image, image_position, order_index')
+            .order('order_index', { ascending: true }),
+        ]);
+
+        if (topicsRes.error)   throw topicsRes.error;
+        if (projectsRes.error) throw projectsRes.error;
+
+        const topicsData   = topicsRes.data   || [];
+        const projectsData = projectsRes.data || [];
+
+        if (topicsData.length === 0) {
+          // Empty cloud — keep local state untouched, user can push later.
+          if (!cancelled) setSyncStatus('idle');
+          return;
+        }
+
+        const byTopic = Object.create(null);
+        for (const p of projectsData) {
+          (byTopic[p.topic_id] ??= []).push(p);
+        }
+        const TOPICS = topicsData.map((t) => ({
+          id: t.id,
+          label: t.label,
+          projects: (byTopic[t.id] || []).map((p) => ({
+            id: p.id,
+            title: p.title || '',
+            subtitle: p.subtitle || '',
+            url: p.url || '',
+            image: p.image || '',
+            imagePosition: p.image_position || '50% 50%',
+          })),
+        }));
+
+        if (cancelled) return;
+        setState((s) => {
+          const next = { ...s, TOPICS };
+          // Treat the just-fetched state as "clean" — the cloud is what
+          // it is, so there's nothing to publish yet.
+          setCleanSnapshot(snapshotOf(next));
+          return next;
+        });
+        setSyncStatus('idle');
+      } catch (err) {
+        if (cancelled) return;
+         
+        console.warn('[supabase] fetch failed:', err);
+        setSyncError(err.message || String(err));
+        setSyncStatus('error');
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const reset = useCallback(() => {
+    const fresh = buildInitial();
+    setState(fresh);
+    // Reset counts as "clean" — you haven't edited anything yet.
+    setCleanSnapshot(snapshotOf(fresh));
+  }, []);
 
   // --- Mutation helpers the Editor binds to -------------------------------
   const setProfile = useCallback(
@@ -125,7 +271,7 @@ export function ContentProvider({ children }) {
   const addTopic = useCallback(() => {
     setState((s) => ({
       ...s,
-      TOPICS: [...s.TOPICS, { label: 'New Topic', projects: [] }],
+      TOPICS: [...s.TOPICS, { id: genId(), label: 'New Topic', projects: [] }],
     }));
   }, []);
 
@@ -163,7 +309,7 @@ export function ContentProvider({ children }) {
       const t = { ...TOPICS[ti] };
       t.projects = [
         ...t.projects,
-        { title: 'New project', subtitle: '', url: '', image: '', imagePosition: '50% 50%' },
+        { id: genId(), title: 'New project', subtitle: '', url: '', image: '', imagePosition: '50% 50%' },
       ];
       TOPICS[ti] = t;
       return { ...s, TOPICS };
@@ -192,6 +338,102 @@ export function ContentProvider({ children }) {
       return { ...s, TOPICS };
     });
   }, []);
+
+  // Push the current TOPICS + projects to Supabase. Uses `upsert` on `id` so
+  // existing rows are updated in-place and new rows are inserted. Rows that
+  // were deleted locally are pruned by id-exclusion. Cloudinary image URLs
+  // are normalised with f_auto,q_auto before being written so the DB always
+  // holds storage-optimised values.
+  const saveToCloud = useCallback(async () => {
+    if (!hasSupabase) {
+      throw new Error('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).');
+    }
+
+    setSyncStatus('saving');
+    setSyncError(null);
+
+    try {
+      const now = new Date().toISOString();
+
+      // --- 1. Topics -------------------------------------------------------
+      const topicsPayload = state.TOPICS.map((t, i) => ({
+        id: t.id,
+        label: t.label,
+        order_index: i,
+        updated_at: now,
+      }));
+
+      if (topicsPayload.length > 0) {
+        const { error } = await supabase
+          .from('topics')
+          .upsert(topicsPayload, { onConflict: 'id' });
+        if (error) throw error;
+      }
+
+      // --- 2. Projects -----------------------------------------------------
+      const projectsPayload = [];
+      for (const [ti, t] of state.TOPICS.entries()) {
+        for (const [pi, p] of t.projects.entries()) {
+          projectsPayload.push({
+            id: p.id,
+            topic_id: t.id,
+            title: p.title || '',
+            subtitle: p.subtitle || '',
+            url: p.url || '',
+            image: normalizeCloudinaryForStorage(p.image || ''),
+            image_position: p.imagePosition || '50% 50%',
+            order_index: pi,
+            updated_at: now,
+          });
+        }
+      }
+
+      if (projectsPayload.length > 0) {
+        const { error } = await supabase
+          .from('projects')
+          .upsert(projectsPayload, { onConflict: 'id' });
+        if (error) throw error;
+      }
+
+      // --- 3. Prune rows that were removed locally ------------------------
+      // PostgREST requires every DELETE to have a filter. Use `not.in` when
+      // we have IDs to keep, otherwise a trivially-true filter to wipe all.
+      const keepTopicIds   = topicsPayload.map((t) => t.id);
+      const keepProjectIds = projectsPayload.map((p) => p.id);
+      const SENTINEL_UUID  = '00000000-0000-0000-0000-000000000000';
+
+      {
+        const q = supabase.from('projects').delete();
+        const { error } = keepProjectIds.length > 0
+          ? await q.not('id', 'in', `(${keepProjectIds.join(',')})`)
+          : await q.neq('id', SENTINEL_UUID);
+        if (error) console.warn('[supabase] prune projects:', error);
+      }
+      {
+        const q = supabase.from('topics').delete();
+        const { error } = keepTopicIds.length > 0
+          ? await q.not('id', 'in', `(${keepTopicIds.join(',')})`)
+          : await q.neq('id', SENTINEL_UUID);
+        if (error) console.warn('[supabase] prune topics:', error);
+      }
+
+      setSyncStatus('saved');
+      // Everything the user typed is now published — clear the dirty flag.
+      setCleanSnapshot(snapshotOf(state));
+      // Auto-fade back to idle so repeat saves feel fresh.
+      setTimeout(() => {
+        setSyncStatus((s) => (s === 'saved' ? 'idle' : s));
+      }, 2600);
+
+      return { ok: true };
+    } catch (err) {
+       
+      console.error('[supabase] save failed:', err);
+      setSyncError(err.message || String(err));
+      setSyncStatus('error');
+      return { ok: false, error: err.message || String(err) };
+    }
+  }, [state]);
 
   // Move a project to any (topic, index). Powers drag-and-drop reordering
   // across topics. `dstPi` is the index BEFORE which the project will land,
@@ -276,6 +518,12 @@ export function ContentProvider({ children }) {
     moveProject,
     moveProjectTo,
     reset,
+    // cloud sync
+    saveToCloud,
+    syncStatus,
+    syncError,
+    hasSupabase,
+    isDirty,
     // read shape for components
     ...derived,
     PROFILE: state.PROFILE,

@@ -37,7 +37,11 @@ export default function ProjectCard({ project, index, onOpen }) {
       }}
       whileTap={{ scale: 0.98 }}
       className="group relative block text-left rounded-xl overflow-hidden bg-ink-800 ring-1 ring-white/5 shadow-[0_0_0_0_rgba(0,0,0,0)] hover:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255,255,255,0.08)] transition-shadow duration-500 will-change-transform"
-      style={{ aspectRatio: '1.43 / 1' }}
+      // `containerType: inline-size` turns this button into a *query container*
+      // so the title/subtitle below can scale with the card's own width using
+      // the `cqw` unit — keeps text perfectly proportioned whatever column
+      // count the grid is at (2 / 3 / 4) and at every intermediate width.
+      style={{ aspectRatio: '1.43 / 1', containerType: 'inline-size' }}
     >
       {/* Blur-up LQIP: tiny Cloudinary-blurred still painted as background;
           stays behind the real <img> until it finishes decoding. Noop (empty
@@ -83,13 +87,22 @@ export default function ProjectCard({ project, index, onOpen }) {
         <Play className="w-3.5 h-3.5 fill-white text-white translate-x-[1px]" />
       </div>
 
-      {/* meta — hero-style title with subtitle sized to fit the card */}
-      <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 md:p-5">
-        <h3 className="text-balance text-white font-medium leading-[1.1] tracking-tight text-[clamp(0.95rem,2.4vw,1.55rem)] line-clamp-2">
+      {/* meta — title & subtitle sized relative to the CARD width (cqw), so
+          they scale continuously between every grid breakpoint rather than
+          jumping with the viewport. Padding also uses `cqw` so the stack
+          stays proportional from 240 px cards up to 500 px cards. */}
+      <div
+        className="absolute inset-x-0 bottom-0"
+        style={{ padding: 'clamp(0.6rem, 4cqw, 1.15rem)' }}
+      >
+        <h3 className="text-balance text-white font-medium leading-[1.1] tracking-tight text-[clamp(0.82rem,5.8cqw,1.35rem)] line-clamp-2">
           {project.title}
         </h3>
         {project.subtitle && (
-          <p className="mt-1 sm:mt-2 text-white/65 leading-snug text-[clamp(0.72rem,1.4vw,0.9rem)] line-clamp-2">
+          <p
+            className="text-white/65 leading-snug text-[clamp(0.64rem,3.1cqw,0.85rem)] line-clamp-2"
+            style={{ marginTop: 'clamp(0.2rem, 1.2cqw, 0.5rem)' }}
+          >
             {project.subtitle}
           </p>
         )}
