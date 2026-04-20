@@ -13,7 +13,7 @@ export const PROFILE = {
   photo:               "/profile.jpg",
   name:                "Film Natthawut",
   role:                "Director / Cinematographer",
-  tagline:             "I'm wish to be a light painter",
+  tagline:             "I wish to be a light painter",
   taglineEmphasis:     "light painter",
   siteTitle:           "Film Natthawut - Portfolio",
   favicon:             "/icons/favicon-32.png",
@@ -78,6 +78,11 @@ export const TOPICS = [
   ]),
 
   topic("MV, Live Session & Short Film", [
+    project({
+      title:    "JACKIE JACKRIN THE FIRST QUARTER",
+      subtitle: "25th BIRTHDAY PARTY",
+      url:      "https://www.youtube.com/watch?v=Gzspn8-1QmY",
+    }),
     project({
       title:    "เติมเธอ (Fill My Heart) — KRIST",
       subtitle: "2nd DOP · Live Session",
