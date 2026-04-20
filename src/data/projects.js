@@ -11,6 +11,8 @@
 
 export const PROFILE = {
   photo:               "/profile.jpg",
+  photoPosition:       "50% 50%",
+  mobilePhotoHeight:   180,
   name:                "Film Natthawut",
   role:                "Director / Cinematographer",
   tagline:             "I wish to be a light painter",

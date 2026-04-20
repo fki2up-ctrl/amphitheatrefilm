@@ -215,7 +215,7 @@ export default function App() {
             </motion.button>
 
             <main className="relative z-10 lg:ml-[var(--site-sidebar-width,280px)]">
-              <div className="px-4 sm:px-8 lg:px-12 pt-32 sm:pt-32 lg:pt-16 pb-28 lg:pb-24">
+              <div className="px-4 sm:px-8 lg:px-12 pt-[calc(var(--mobile-header-height,128px)+16px)] lg:pt-16 pb-28 lg:pb-24">
                 <GalleryHeader />
                 {isAllView && <FeaturedVideo onOpen={setOpenProject} />}
                 <ProjectGrid

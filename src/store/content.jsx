@@ -816,6 +816,8 @@ export function serializeToProjectsJs(state) {
 
 export const PROFILE = {
   photo:               ${s(state.PROFILE.photo)},
+  photoPosition:       ${s(state.PROFILE.photoPosition || '50% 50%')},
+  mobilePhotoHeight:   ${Number(state.PROFILE.mobilePhotoHeight) || 180},
   name:                ${s(state.PROFILE.name)},
   role:                ${s(state.PROFILE.role)},
   tagline:             ${s(state.PROFILE.tagline)},

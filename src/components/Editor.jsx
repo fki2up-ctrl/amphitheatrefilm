@@ -460,15 +460,30 @@ function SiteConfigSection({ c }) {
 
 function ProfileSection({ c }) {
   const { PROFILE, setProfile } = c;
+
+  // Parse "X% Y%" into two numbers so the sliders can drive object-position.
+  const [rawX, rawY] = (PROFILE.photoPosition || '50% 50%').split(/\s+/);
+  const cropX = Number.parseFloat(rawX) || 50;
+  const cropY = Number.parseFloat(rawY) || 50;
+  const setCrop = (x, y) =>
+    setProfile({ photoPosition: `${Math.round(x)}% ${Math.round(y)}%` });
+
+  const mobileH = Number(PROFILE.mobilePhotoHeight) || 180;
+
   return (
     <Section title="Profile" hint="Your photo, name, role, and tagline.">
       <div className="flex items-start gap-4">
-        <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-ink-800 ring-1 ring-white/10">
+        {/* Larger 4:5 preview — crop edits reflect live */}
+        <div
+          className="w-24 shrink-0 rounded-lg overflow-hidden bg-ink-800 ring-1 ring-white/10"
+          style={{ aspectRatio: '4 / 5' }}
+        >
           {PROFILE.photo ? (
             <img
-              src={previewSrc(PROFILE.photo, 200)}
+              src={previewSrc(PROFILE.photo, 240)}
               alt=""
               className="w-full h-full object-cover"
+              style={{ objectPosition: `${cropX}% ${cropY}%` }}
             />
           ) : null}
         </div>
@@ -482,6 +497,33 @@ function ProfileSection({ c }) {
           />
         </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <SliderField
+          label={`Crop horizontal (${Math.round(cropX)}%)`}
+          value={cropX}
+          onChange={(v) => setCrop(v, cropY)}
+          min={0}
+          max={100}
+          step={1}
+        />
+        <SliderField
+          label={`Crop vertical (${Math.round(cropY)}%)`}
+          value={cropY}
+          onChange={(v) => setCrop(cropX, v)}
+          min={0}
+          max={100}
+          step={1}
+        />
+      </div>
+      <SliderField
+        label={`Mobile portrait height (${mobileH}px)`}
+        value={mobileH}
+        onChange={(v) => setProfile({ mobilePhotoHeight: Math.round(v) })}
+        min={80}
+        max={360}
+        step={4}
+      />
       <Field label="Name" value={PROFILE.name} onChange={(v) => setProfile({ name: v })} />
       <Field label="Role" value={PROFILE.role} onChange={(v) => setProfile({ role: v })} />
       <Field
@@ -1166,19 +1208,31 @@ function ExportModal({ open, onClose, source }) {
 // UI primitives
 // ---------------------------------------------------------------------------
 
-function Section({ title, hint, action, children }) {
+function Section({ title, hint, action, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-[11px] tracking-widest2 uppercase text-white/50">
-            {title}
-          </h3>
-          {hint && <p className="mt-1 text-[11px] text-white/40">{hint}</p>}
-        </div>
-        {action}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex-1 flex items-start gap-2 text-left group"
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 mt-0.5 text-white/40 group-hover:text-white/75 transition-all duration-200 ${open ? '' : '-rotate-90'}`}
+          />
+          <div>
+            <h3 className="text-[11px] tracking-widest2 uppercase text-white/55 group-hover:text-white/85 transition-colors">
+              {title}
+            </h3>
+            {hint && open && (
+              <p className="mt-1 text-[11px] text-white/40">{hint}</p>
+            )}
+          </div>
+        </button>
+        {open && action}
       </div>
-      <div className="space-y-3">{children}</div>
+      {open && <div className="space-y-3">{children}</div>}
     </section>
   );
 }

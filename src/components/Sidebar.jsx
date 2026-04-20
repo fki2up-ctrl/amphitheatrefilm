@@ -57,6 +57,7 @@ export default function Sidebar({ onOpenEditor }) {
                   alt={`${BRAND.name} — ${BRAND.role}`}
                   loading="lazy"
                   className="w-full h-full object-cover"
+                  style={{ objectPosition: PROFILE.photoPosition || '50% 50%' }}
                 />
               </div>
             )}
