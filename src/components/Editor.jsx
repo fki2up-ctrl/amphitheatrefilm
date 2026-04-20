@@ -367,9 +367,9 @@ function ProfileSection({ c }) {
       />
 
       {/* --- Intro screen (shown before the background video) ---------------- */}
-      <div className="pt-3 mt-3 border-t border-white/10 space-y-3">
+      <Collapsible title="Intro screen">
         <p className="text-[10px] tracking-widest2 uppercase text-white/40">
-          Intro screen — Tagline
+          Tagline
         </p>
         <Field
           label="Intro tagline (first line of the cinematic intro)"
@@ -424,7 +424,7 @@ function ProfileSection({ c }) {
             compact
           />
         </div>
-      </div>
+      </Collapsible>
 
       {/* --- Navigation labels ------------------------------------------------ */}
       <div className="pt-3 mt-3 border-t border-white/10">
@@ -440,18 +440,23 @@ function ProfileSection({ c }) {
         />
       </div>
 
-      {/* --- Browser tab: title + favicon (logo) ----------------------------- */}
-      <div className="pt-3 mt-3 border-t border-white/10">
-        <p className="text-[10px] tracking-widest2 uppercase text-white/40 mb-2">
-          Browser tab
-        </p>
+      {/* --- Browser tab: title + description + favicon --------------------- */}
+      <Collapsible title="Browser tab">
         <Field
           label="Website headline (browser tab title)"
           value={PROFILE.siteTitle || ''}
           onChange={(v) => setProfile({ siteTitle: v })}
           placeholder="My Portfolio — Tagline"
         />
-        <div className="flex items-center gap-3 mt-3">
+        <Field
+          label="Website description (shown in Google results & social shares)"
+          value={PROFILE.siteDescription || ''}
+          onChange={(v) => setProfile({ siteDescription: v })}
+          placeholder="A short sentence describing your work."
+          textarea
+          hint="Updates the <meta name=&quot;description&quot;> tag live."
+        />
+        <div className="flex items-center gap-3">
           <div className="w-10 h-10 shrink-0 rounded-md overflow-hidden bg-ink-800 ring-1 ring-white/10 flex items-center justify-center">
             {PROFILE.favicon ? (
               <img
@@ -472,7 +477,18 @@ function ProfileSection({ c }) {
             />
           </div>
         </div>
-      </div>
+      </Collapsible>
+
+      {/* --- Landing background video --------------------------------------- */}
+      <Collapsible title="Landing background video">
+        <Field
+          label="Video URL (YouTube, Vimeo, Cloudinary mp4, or any direct video URL)"
+          value={PROFILE.landingVideo || ''}
+          onChange={(v) => setProfile({ landingVideo: v })}
+          placeholder="https://youtu.be/…  or  https://vimeo.com/…"
+          hint="Plays full-screen behind the landing menu. Leave empty to fall back to the Featured video, then the built-in default."
+        />
+      </Collapsible>
     </Section>
   );
 }
@@ -1066,6 +1082,25 @@ function Field({ label, value, onChange, placeholder, textarea, compact, hint })
         </span>
       )}
     </label>
+  );
+}
+
+function Collapsible({ title, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="pt-3 mt-3 border-t border-white/10">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between py-1 text-[10px] tracking-widest2 uppercase text-white/45 hover:text-white/80 transition-colors"
+      >
+        <span>{title}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && <div className="mt-3 space-y-3">{children}</div>}
+    </div>
   );
 }
 

@@ -44,8 +44,12 @@ export default function Landing() {
   const { PROFILE, CATEGORIES } = useContent();
   const { openCategory } = usePhase();
 
-  // Prefer the user-configured featured video, fall back to the default.
-  const videoUrl = (PROFILE.featuredVideo && PROFILE.featuredVideo.trim()) || DEFAULT_LANDING_VIDEO;
+  // Prefer the dedicated landing background URL, then the featured video,
+  // then the hard-coded default.
+  const videoUrl =
+    (PROFILE.landingVideo  && PROFILE.landingVideo.trim())  ||
+    (PROFILE.featuredVideo && PROFILE.featuredVideo.trim()) ||
+    DEFAULT_LANDING_VIDEO;
 
   // Menu data — "All" pseudo-item prepended to the live Supabase topics.
   // `id` for "All" is the sentinel from PhaseProvider; everything else is

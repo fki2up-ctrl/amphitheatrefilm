@@ -71,6 +71,18 @@ export default function App() {
   }, [PROFILE.siteTitle]);
 
   useEffect(() => {
+    const desc = (PROFILE.siteDescription || '').trim();
+    if (!desc) return;
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', desc);
+  }, [PROFILE.siteDescription]);
+
+  useEffect(() => {
     if (!PROFILE.favicon) return;
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
