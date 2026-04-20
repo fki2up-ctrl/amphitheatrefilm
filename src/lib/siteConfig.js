@@ -21,8 +21,10 @@ export const DEFAULT_SITE_CONFIG = {
     cardGap:      20,   // px, gap between project cards
   },
   typography: {
-    topicSize: 32,      // px, big category title in GalleryHeader
-    bodySize:  16,      // px, base body size (drives Tailwind rem scale)
+    topicSize: 56,      // px, big category title in GalleryHeader (applied
+                        // on every breakpoint so mobile reflects editor
+                        // changes; prior value matched desktop text-6xl).
+    bodySize:  16,      // px, base body size
   },
   animations: {
     introSpeed:        1,         // multiplier; 1 = default, <1 faster, >1 slower

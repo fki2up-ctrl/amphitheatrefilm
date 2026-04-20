@@ -37,12 +37,12 @@ body {
   font-size: var(--site-body-size, 16px);
 }
 
-/* Project grid: mobile stays locked at 2 cols via grid-cols-2; from md up
-   follow the --site-grid-cols CSS variable driven by siteConfig.layout. */
-@media (min-width: 768px) {
-  .site-grid {
-    grid-template-columns: repeat(var(--site-grid-cols, 3), minmax(0, 1fr));
-  }
+/* Project grid: column count is fully driven by --site-grid-cols so the
+   editor's Layout & motion panel affects every breakpoint including mobile.
+   The Tailwind grid-cols-2 on the element provides a sane fallback before
+   the CSS var is applied on first paint. */
+.site-grid {
+  grid-template-columns: repeat(var(--site-grid-cols, 3), minmax(0, 1fr));
 }
 
 /* Hide scrollbar but keep functionality on the content pane */
