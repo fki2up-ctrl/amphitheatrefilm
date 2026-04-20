@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Instagram, Facebook, Mail, Link as LinkIcon, Pencil } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Instagram, Facebook, Mail, Link as LinkIcon, Pencil } from 'lucide-react';
 import { useContent } from '../store/content';
 
 // Render the tagline with one word optionally italicised for emphasis.
@@ -19,13 +18,8 @@ function renderTagline(text, emphasis) {
   );
 }
 
-export default function Sidebar({ activeProjectId, activeCategoryId, onSelectProject, onOpenEditor }) {
-  const { BRAND, CATEGORIES, SITE_ASSETS, PROFILE } = useContent();
-  // Start with everything collapsed — the left accent bar and any "selected"
-  // styling should only appear once the user actively chooses a topic.
-  const [openId, setOpenId] = useState(null);
-
-  const toggle = (id) => setOpenId((cur) => (cur === id ? null : id));
+export default function Sidebar({ onOpenEditor }) {
+  const { BRAND, SITE_ASSETS, PROFILE } = useContent();
 
   return (
     <motion.aside
@@ -84,117 +78,13 @@ export default function Sidebar({ activeProjectId, activeCategoryId, onSelectPro
             </div>
           </motion.div>
 
-          {/* Accordion nav */}
+          {/* Contact list — replaces the previous category accordion. */}
           <nav className="mt-8 flex-1 overflow-y-auto pretty-scroll px-7 pr-4">
-            <ul className="space-y-1">
-              {CATEGORIES.map((cat, i) => {
-                const isOpen = openId === cat.id;
-                const isActiveCat = activeCategoryId === cat.id;
-                return (
-                  <motion.li
-                    key={cat.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{
-                      // Only dim others when a category is actually open.
-                      opacity: openId == null || isOpen ? 1 : 0.55,
-                      x: 0,
-                    }}
-                    transition={{ delay: 0.1 + i * 0.05, duration: 0.5 }}
-                    className={`relative rounded-lg border-b border-white/5 last:border-b-0 transition-colors duration-300 ${
-                      isOpen
-                        ? 'bg-white/[0.04] border-b-transparent shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]'
-                        : ''
-                    }`}
-                  >
-                    {/* Accent bar — only when the user has actually opened this category */}
-                    <AnimatePresence>
-                      {isOpen && (
-                        <motion.span
-                          layoutId="sidebar-active-bar"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-white"
-                        />
-                      )}
-                    </AnimatePresence>
-
-                    <button
-                      onClick={() => toggle(cat.id)}
-                      className={`group w-full flex items-center justify-between gap-3 py-3 text-left transition-[padding] duration-300 ${
-                        isOpen ? 'pl-4 pr-3' : 'pl-0 pr-0'
-                      }`}
-                    >
-                      <span className="flex items-center gap-3 min-w-0">
-                        <span
-                          className={`h-px transition-all duration-500 ${
-                            isOpen
-                              ? 'w-8 bg-white'
-                              : isActiveCat
-                              ? 'w-6 bg-white'
-                              : 'w-3 bg-white/25 group-hover:w-5 group-hover:bg-white/60'
-                          }`}
-                        />
-                        <span
-                          className={`tracking-wide transition-all duration-300 truncate ${
-                            isOpen
-                              ? 'text-white text-[14px] font-medium'
-                              : isActiveCat
-                              ? 'text-white text-[13px]'
-                              : 'text-white/55 text-[13px] group-hover:text-white/90'
-                          }`}
-                        >
-                          {cat.label}
-                        </span>
-                      </span>
-                      <motion.span
-                        animate={{
-                          rotate: isOpen ? 180 : 0,
-                          opacity: isOpen ? 1 : 0.45,
-                        }}
-                        transition={{ duration: 0.3 }}
-                        className={isOpen ? 'text-white' : 'text-white/40'}
-                      >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </motion.span>
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          key="content"
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                          className="overflow-hidden"
-                        >
-                          <ul className="pb-3 pl-6 space-y-0.5">
-                            {cat.projects.map((p) => {
-                              const isActive = activeProjectId === p.id;
-                              return (
-                                <li key={p.id}>
-                                  <button
-                                    onClick={() => onSelectProject(p.id)}
-                                    className={`group w-full text-left text-[12px] leading-snug py-1.5 pl-3 border-l transition-colors duration-200 ${
-                                      isActive
-                                        ? 'border-white text-white'
-                                        : 'border-white/10 text-white/45 hover:text-white/90 hover:border-white/40'
-                                    }`}
-                                  >
-                                    {p.title}
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.li>
-                );
-              })}
+            <ul className="space-y-5">
+              <ContactRow label="Email" value={BRAND.email} href={BRAND.email ? `mailto:${BRAND.email}` : null} />
+              <ContactRow label="Instagram" value={prettyHandle(BRAND.socials.instagram) || BRAND.socials.instagram} href={BRAND.socials.instagram} />
+              <ContactRow label="Facebook" value={prettyHandle(BRAND.socials.facebook) || BRAND.socials.facebook} href={BRAND.socials.facebook} />
+              <ContactRow label="Linktree" value={prettyHandle(BRAND.socials.linktree) || BRAND.socials.linktree} href={BRAND.socials.linktree} />
             </ul>
           </nav>
         </div>
@@ -246,4 +136,40 @@ function SocialBtn({ href, label, children }) {
       {children}
     </a>
   );
+}
+
+// Contact list row — small label above a clickable value.
+function ContactRow({ label, value, href }) {
+  if (!value) return null;
+  const isExternal = href && !href.startsWith('mailto:');
+  return (
+    <li>
+      <div className="text-[10px] tracking-[0.18em] uppercase text-white/35">
+        {label}
+      </div>
+      {href ? (
+        <a
+          href={href}
+          {...(isExternal ? { target: '_blank', rel: 'noreferrer' } : {})}
+          className="mt-1 block text-[13px] text-white/80 hover:text-white break-all transition-colors duration-200"
+        >
+          {value}
+        </a>
+      ) : (
+        <div className="mt-1 text-[13px] text-white/80 break-all">{value}</div>
+      )}
+    </li>
+  );
+}
+
+// Convert a social URL to a pretty @handle (best-effort, falls back to URL).
+function prettyHandle(url) {
+  if (!url || typeof url !== 'string') return '';
+  try {
+    const u = new URL(url);
+    const seg = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean).pop();
+    return seg ? `@${seg}` : '';
+  } catch {
+    return '';
+  }
 }

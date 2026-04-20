@@ -13,6 +13,7 @@
 // the phase state machine.
 // ---------------------------------------------------------------------------
 
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useContent } from '../store/content';
 import { usePhase, CATEGORY_ALL } from '../flow/PhaseProvider';
@@ -20,8 +21,9 @@ import { usePhase, CATEGORY_ALL } from '../flow/PhaseProvider';
 const TITLE_EASE = [0.16, 1, 0.3, 1];
 
 export default function GalleryHeader() {
-  const { CATEGORIES } = useContent();
+  const { CATEGORIES, PROFILE } = useContent();
   const { selectedCategory, openCategory } = usePhase();
+  const allLabel = (PROFILE.allLabel && PROFILE.allLabel.trim()) || 'All';
 
   // Resolve the big title based on which view we're in.
   const activeCategory =
@@ -36,7 +38,7 @@ export default function GalleryHeader() {
   // Pills for swapping categories from inside the gallery. "All" first,
   // then each topic.
   const pills = [
-    { id: CATEGORY_ALL, label: 'All' },
+    { id: CATEGORY_ALL, label: allLabel },
     ...CATEGORIES.map((c) => ({ id: c.id, label: c.label })),
   ];
 
@@ -67,40 +69,73 @@ export default function GalleryHeader() {
         </div>
       </motion.div>
 
-      {/* Pill nav — enters just after the title. Current selection is filled;
-          others are ghosted. Keyboard-navigable; click to swap view. */}
-      <motion.nav
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: TITLE_EASE, delay: 0.55 }}
-        className="mt-6 sm:mt-8"
-      >
-        <ul className="flex flex-wrap gap-2 sm:gap-2.5">
-          {pills.map((p) => {
-            const active = p.id === selectedCategory;
-            return (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  onClick={() => openCategory(p.id)}
-                  aria-pressed={active}
-                  className={`
-                    inline-flex items-center px-3.5 py-1.5
-                    text-[11px] sm:text-xs tracking-[0.14em] uppercase
-                    rounded-full border transition-colors duration-200
-                    focus:outline-none focus-visible:ring-1 focus-visible:ring-white/60
-                    ${active
-                      ? 'border-white/60 bg-white/10 text-white'
-                      : 'border-white/10 text-white/55 hover:text-white hover:border-white/30'}
-                  `}
-                >
-                  {p.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </motion.nav>
+      {/* Pill nav — single horizontal line, thumb-scrollable. Active pill
+          smooth-scrolls into the viewport center on change. */}
+      <PillNav
+        pills={pills}
+        selectedCategory={selectedCategory}
+        openCategory={openCategory}
+      />
     </header>
+  );
+}
+
+function PillNav({ pills, selectedCategory, openCategory }) {
+  const scrollerRef = useRef(null);
+  const pillRefs = useRef({});
+
+  // Center the active pill inside the scroller whenever selection changes.
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const pill = pillRefs.current[selectedCategory];
+    if (!scroller || !pill) return;
+    const target =
+      pill.offsetLeft - (scroller.clientWidth - pill.offsetWidth) / 2;
+    scroller.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  }, [selectedCategory]);
+
+  return (
+    <motion.nav
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: TITLE_EASE, delay: 0.55 }}
+      className="mt-6 sm:mt-8 -mx-4 sm:-mx-8 lg:-mx-12"
+      style={{
+        WebkitMaskImage:
+          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+        maskImage:
+          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
+      }}
+    >
+      <ul
+        ref={scrollerRef}
+        className="flex flex-nowrap items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-4 sm:px-8 lg:px-12 py-1"
+      >
+        {pills.map((p) => {
+          const active = p.id === selectedCategory;
+          return (
+            <li key={p.id} className="shrink-0">
+              <button
+                ref={(el) => { pillRefs.current[p.id] = el; }}
+                type="button"
+                onClick={() => openCategory(p.id)}
+                aria-pressed={active}
+                className={`
+                  inline-flex items-center px-3.5 py-1.5 whitespace-nowrap
+                  text-[11px] sm:text-xs tracking-[0.14em] uppercase
+                  rounded-full border transition-all duration-300
+                  focus:outline-none focus-visible:ring-1 focus-visible:ring-white/60
+                  ${active
+                    ? 'border-white/60 bg-white/10 text-white scale-[1.04]'
+                    : 'border-white/10 text-white/55 hover:text-white hover:border-white/30'}
+                `}
+              >
+                {p.label}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </motion.nav>
   );
 }

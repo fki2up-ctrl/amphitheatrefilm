@@ -15,12 +15,12 @@ import { useContent } from '../store/content';
 import { usePhase, CATEGORY_ALL } from '../flow/PhaseProvider';
 
 export default function MobileNav() {
-  const { CATEGORIES } = useContent();
+  const { CATEGORIES, PROFILE } = useContent();
   const { selectedCategory, openCategory } = usePhase();
 
   // Menu items — "All" prepended, mirroring the Landing & GalleryHeader lists.
   const items = [
-    { id: CATEGORY_ALL, label: 'All' },
+    { id: CATEGORY_ALL, label: (PROFILE.allLabel && PROFILE.allLabel.trim()) || 'All' },
     ...CATEGORIES.map((c) => ({ id: c.id, label: c.label })),
   ];
 

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Pencil } from 'lucide-react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
+import MobileTopBar from './components/MobileTopBar';
 import ProjectGrid from './components/ProjectGrid';
 import FeaturedVideo from './components/FeaturedVideo';
 import VideoModal from './components/VideoModal';
@@ -170,16 +172,38 @@ export default function App() {
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
+            <MobileTopBar />
             <MobileNav />
-            <Sidebar
-              activeProjectId={activeProjectId}
-              activeCategoryId={activeCategoryId}
-              onSelectProject={handleSelectProject}
-              onOpenEditor={() => setEditorOpen(true)}
-            />
+            <Sidebar onOpenEditor={() => setEditorOpen(true)} />
+
+            {/* Mobile-only edit FAB — desktop uses the Sidebar pencil. */}
+            <motion.button
+              type="button"
+              onClick={() => setEditorOpen(true)}
+              aria-label="Edit content"
+              title="Edit content"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay: 0.7 }}
+              className="
+                lg:hidden fixed z-50 right-4
+                w-12 h-12 rounded-full
+                bg-ink-950/85 backdrop-blur-md
+                border border-white/15 text-white/80
+                flex items-center justify-center
+                shadow-lg shadow-black/40
+                hover:text-white hover:border-white/40
+                active:scale-95 transition-all
+              "
+              style={{
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+              }}
+            >
+              <Pencil className="w-4 h-4" />
+            </motion.button>
 
             <main className="relative z-10 lg:ml-[280px]">
-              <div className="px-4 sm:px-8 lg:px-12 pt-12 sm:pt-16 lg:pt-16 pb-28 lg:pb-24">
+              <div className="px-4 sm:px-8 lg:px-12 pt-32 sm:pt-32 lg:pt-16 pb-28 lg:pb-24">
                 <GalleryHeader />
                 {isAllView && <FeaturedVideo onOpen={setOpenProject} />}
                 <ProjectGrid

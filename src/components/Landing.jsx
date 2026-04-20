@@ -51,7 +51,7 @@ export default function Landing() {
   // `id` for "All" is the sentinel from PhaseProvider; everything else is
   // the real topic id used by the Gallery filter in Chunk F.
   const menuItems = [
-    { id: CATEGORY_ALL, label: 'All' },
+    { id: CATEGORY_ALL, label: (PROFILE.allLabel && PROFILE.allLabel.trim()) || 'All' },
     ...CATEGORIES.map((c) => ({ id: c.id, label: c.label })),
   ];
 

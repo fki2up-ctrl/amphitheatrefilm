@@ -366,6 +366,80 @@ function ProfileSection({ c }) {
         placeholder="e.g. kindness"
       />
 
+      {/* --- Intro screen (shown before the background video) ---------------- */}
+      <div className="pt-3 mt-3 border-t border-white/10 space-y-3">
+        <p className="text-[10px] tracking-widest2 uppercase text-white/40">
+          Intro screen — Tagline
+        </p>
+        <Field
+          label="Intro tagline (first line of the cinematic intro)"
+          value={PROFILE.introTagline || ''}
+          onChange={(v) => setProfile({ introTagline: v })}
+          placeholder="I wish to be a light painter"
+          textarea
+          hint="Shown with a focus-pull reveal before the background video starts. Leave empty to fall back to the main tagline."
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <SliderField
+            label="Size"
+            value={Number(PROFILE.introTaglineScale) || 1}
+            onChange={(v) => setProfile({ introTaglineScale: v })}
+            min={0.6}
+            max={1.8}
+            step={0.05}
+          />
+          <Field
+            label="Letter spacing (em)"
+            value={PROFILE.introTaglineTracking || ''}
+            onChange={(v) => setProfile({ introTaglineTracking: v })}
+            placeholder="0.01em"
+            compact
+          />
+        </div>
+
+        <p className="pt-2 text-[10px] tracking-widest2 uppercase text-white/40">
+          Intro screen — Name
+        </p>
+        <Field
+          label="Intro name (optional override)"
+          value={PROFILE.introName || ''}
+          onChange={(v) => setProfile({ introName: v })}
+          placeholder={PROFILE.name || 'Film Natthawut'}
+          hint="Leave empty to use your main Name (above). Use this only if you want a different name shown during the cinematic intro."
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <SliderField
+            label="Size"
+            value={Number(PROFILE.introNameScale) || 1}
+            onChange={(v) => setProfile({ introNameScale: v })}
+            min={0.6}
+            max={1.8}
+            step={0.05}
+          />
+          <Field
+            label="Letter spacing (em)"
+            value={PROFILE.introNameTracking || ''}
+            onChange={(v) => setProfile({ introNameTracking: v })}
+            placeholder="0.005em"
+            compact
+          />
+        </div>
+      </div>
+
+      {/* --- Navigation labels ------------------------------------------------ */}
+      <div className="pt-3 mt-3 border-t border-white/10">
+        <p className="text-[10px] tracking-widest2 uppercase text-white/40 mb-2">
+          Navigation labels
+        </p>
+        <Field
+          label={"\u201CAll\u201D category pill label"}
+          value={PROFILE.allLabel || ''}
+          onChange={(v) => setProfile({ allLabel: v })}
+          placeholder="All"
+          hint={"Shown in the Landing menu, Gallery pills, and mobile nav. Individual category names are edited under Topics & projects below."}
+        />
+      </div>
+
       {/* --- Browser tab: title + favicon (logo) ----------------------------- */}
       <div className="pt-3 mt-3 border-t border-white/10">
         <p className="text-[10px] tracking-widest2 uppercase text-white/40 mb-2">
@@ -991,6 +1065,28 @@ function Field({ label, value, onChange, placeholder, textarea, compact, hint })
           {hint}
         </span>
       )}
+    </label>
+  );
+}
+
+function SliderField({ label, value, onChange, min = 0, max = 1, step = 0.01 }) {
+  const num = Number(value);
+  const display = Number.isFinite(num) ? num.toFixed(2) : String(value);
+  return (
+    <label className="block">
+      <span className="flex items-baseline justify-between mb-1">
+        <span className="text-[10px] text-white/45">{label}</span>
+        <span className="text-[10px] tabular-nums text-white/60">{display}×</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={num}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full accent-white/80"
+      />
     </label>
   );
 }

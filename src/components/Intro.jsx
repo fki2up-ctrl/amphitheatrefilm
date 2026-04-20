@@ -107,24 +107,34 @@ export default function Intro({ onComplete }) {
 // Phase 1 — Focus-pull reveal of the tagline.
 // ---------------------------------------------------------------------------
 function PhaseOne() {
+  const { PROFILE } = useContent();
+  const text =
+    (PROFILE.introTagline && PROFILE.introTagline.trim()) ||
+    (PROFILE.tagline && PROFILE.tagline.trim()) ||
+    'I wish to be a light painter';
+  const scale = Number(PROFILE.introTaglineScale) || 1;
+  const tracking = PROFILE.introTaglineTracking || '0.01em';
   return (
     <motion.p
       initial={{ opacity: 0, filter: 'blur(25px)' }}
       animate={{ opacity: 1, filter: 'blur(0px)' }}
       exit={{ opacity: 0, filter: 'blur(12px)', transition: { duration: 0.6, ease: 'easeIn' } }}
       transition={{ duration: 1.2, ease: 'easeOut' }}
+      style={{
+        fontSize: `calc(clamp(1.5rem, 4.2vw, 2.75rem) * ${scale})`,
+        letterSpacing: tracking,
+      }}
       className="
         relative z-10
         font-sans font-light
         text-white/90
         text-center px-6
-        text-[clamp(1.5rem,4.2vw,2.75rem)]
-        leading-[1.15] tracking-[0.01em]
+        leading-[1.15]
         [text-shadow:0_1px_24px_rgba(0,0,0,0.4)]
         select-none
       "
     >
-      I wish to be a light painter
+      {text}
     </motion.p>
   );
 }
@@ -143,6 +153,13 @@ function PhaseTwo() {
   const MORPH_EASE = [0.4, 0, 0.2, 1];
   const MORPH_DURATION = 1.1;
 
+  const nameText =
+    (PROFILE.introName && PROFILE.introName.trim()) ||
+    PROFILE.name ||
+    'Natthawut Niyomrot';
+  const nameScale = Number(PROFILE.introNameScale) || 1;
+  const nameTracking = PROFILE.introNameTracking || '0.005em';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -153,15 +170,18 @@ function PhaseTwo() {
       <motion.h1
         layoutId={LAYOUT_ID_BRAND_NAME}
         transition={{ duration: MORPH_DURATION, ease: MORPH_EASE }}
+        style={{
+          fontSize: `calc(clamp(2rem, 5.6vw, 3.75rem) * ${nameScale})`,
+          letterSpacing: nameTracking,
+        }}
         className="
           font-hand font-normal
           text-white
-          text-[clamp(2rem,5.6vw,3.75rem)]
-          leading-[1.1] tracking-[0.005em]
+          leading-[1.1]
           [text-shadow:0_1px_24px_rgba(255,235,200,0.14)]
         "
       >
-        {PROFILE.name || 'Natthawut Niyomrot'}
+        {nameText}
       </motion.h1>
 
       <motion.p
