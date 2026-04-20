@@ -21,6 +21,11 @@ import * as defaults from '../data/projects';
 import { parseYouTubeId } from '../lib/embed';
 import { supabase, hasSupabase } from '../lib/supabase';
 import { normalizeCloudinaryForStorage } from '../utils/cloudinary';
+import {
+  DEFAULT_SITE_CONFIG,
+  mergeSiteConfig,
+  applySiteConfigToRoot,
+} from '../lib/siteConfig';
 
 // Stable UUID for a topic or project row. Native crypto.randomUUID() when
 // available (all modern browsers + Node); falls back to a decent-enough
@@ -32,6 +37,7 @@ function genId() {
 
 const STORAGE_KEY       = 'amphitheatre:content:v1';
 const FONT_SETTINGS_KEY = 'amphitheatre:fontSettings:v1';
+const SITE_CONFIG_KEY   = 'amphitheatre:siteConfig:v1';
 
 // Pinned singleton-row id that matches the default in supabase/schema.sql.
 // Both sides agree on this UUID so the row can be upserted without a
@@ -69,6 +75,16 @@ function loadStoredFontSettings() {
       display: { ...DEFAULT_FONT_SETTINGS.display, ...parsed.display },
       brand:   { ...DEFAULT_FONT_SETTINGS.brand,   ...parsed.brand   },
     };
+  } catch {
+    return null;
+  }
+}
+
+function loadStoredSiteConfig() {
+  try {
+    const raw = localStorage.getItem(SITE_CONFIG_KEY);
+    if (!raw) return null;
+    return mergeSiteConfig(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -242,6 +258,37 @@ export function ContentProvider({ children }) {
     }
   }, [fontSettings]);
 
+  // --- Global site config (layout / typography / animations) -------------
+  // Same pattern as fontSettings: paint to :root synchronously, persist to
+  // localStorage, hydrate from Supabase's `site_config` jsonb column on
+  // mount.
+  const [siteConfig, setSiteConfigState] = useState(
+    () => loadStoredSiteConfig() ?? DEFAULT_SITE_CONFIG
+  );
+
+  useEffect(() => {
+    applySiteConfigToRoot(siteConfig);
+    try {
+      localStorage.setItem(SITE_CONFIG_KEY, JSON.stringify(siteConfig));
+    } catch {
+      /* ignore */
+    }
+  }, [siteConfig]);
+
+  // Deep-merge patch at the group level so callers can do
+  // setSiteConfig({ layout: { gridCols: 4 } }) without clobbering siblings.
+  const setSiteConfig = useCallback((patch) => {
+    setSiteConfigState((prev) => ({
+      layout:     { ...prev.layout,     ...(patch.layout     || {}) },
+      typography: { ...prev.typography, ...(patch.typography || {}) },
+      animations: { ...prev.animations, ...(patch.animations || {}) },
+    }));
+  }, []);
+
+  const resetSiteConfig = useCallback(() => {
+    setSiteConfigState({ ...DEFAULT_SITE_CONFIG });
+  }, []);
+
   // --- Cloud sync state --------------------------------------------------
   // syncStatus: 'idle' | 'loading' | 'saving' | 'saved' | 'error'
   const [syncStatus, setSyncStatus] = useState('idle');
@@ -324,6 +371,10 @@ export function ContentProvider({ children }) {
         if (settingsRow && !cancelled) {
           const fs = rowToFontSettings(settingsRow);
           if (fs) setFontSettings(fs);
+          // site_config jsonb is optional — absent on older schemas.
+          if (settingsRow.site_config) {
+            setSiteConfigState(mergeSiteConfig(settingsRow.site_config));
+          }
         }
 
         if (topicsData.length === 0) {
@@ -488,6 +539,32 @@ export function ContentProvider({ children }) {
       return { ok: false, error: err.message || String(err) };
     }
   }, [fontSettings]);
+
+  // Persist the current siteConfig into the jsonb column of the same
+  // singleton site_settings row. Requires the `site_config` column to exist
+  // — run the migration snippet in supabase/schema.sql.
+  const saveSiteConfig = useCallback(async () => {
+    if (!hasSupabase) {
+      return { ok: false, error: 'Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).' };
+    }
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert(
+          {
+            id: SITE_SETTINGS_ID,
+            site_config: siteConfig,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+      if (error) throw error;
+      return { ok: true };
+    } catch (err) {
+      console.error('[supabase] site_config save failed:', err);
+      return { ok: false, error: err.message || String(err) };
+    }
+  }, [siteConfig]);
 
   // Push the current TOPICS + projects to Supabase. Uses `upsert` on `id` so
   // existing rows are updated in-place and new rows are inserted. Rows that
@@ -672,6 +749,11 @@ export function ContentProvider({ children }) {
     fontSettings,
     setFontSettings,
     saveFontSettings,
+    // global site configuration (layout / typography / animations)
+    siteConfig,
+    setSiteConfig,
+    resetSiteConfig,
+    saveSiteConfig,
     // cloud sync
     saveToCloud,
     syncStatus,

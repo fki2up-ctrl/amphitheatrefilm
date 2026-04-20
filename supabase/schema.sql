@@ -102,8 +102,17 @@ create table if not exists public.site_settings (
   font_display_tracking  text not null default '-0.01em',
   font_brand_tracking    text not null default '0.005em',
 
+  -- Global site configuration (layout / typography / animations) — a single
+  -- JSONB blob so new knobs can be added from the client without migrations.
+  -- Shape defined in src/lib/siteConfig.js → DEFAULT_SITE_CONFIG.
+  site_config            jsonb,
+
   updated_at         timestamptz not null default now()
 );
+
+-- Forward-compat: add `site_config` to existing deployments that pre-date it.
+alter table public.site_settings
+  add column if not exists site_config jsonb;
 
 alter table public.site_settings enable row level security;
 

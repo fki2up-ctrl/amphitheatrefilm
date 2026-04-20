@@ -214,7 +214,7 @@ export default function App() {
               <Pencil className="w-4 h-4" />
             </motion.button>
 
-            <main className="relative z-10 lg:ml-[280px]">
+            <main className="relative z-10 lg:ml-[var(--site-sidebar-width,280px)]">
               <div className="px-4 sm:px-8 lg:px-12 pt-32 sm:pt-32 lg:pt-16 pb-28 lg:pb-24">
                 <GalleryHeader />
                 {isAllView && <FeaturedVideo onOpen={setOpenProject} />}

@@ -52,7 +52,7 @@ export default function ProjectGrid({ onOpen, filterCategoryId }) {
             </motion.header>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
+          <div className="site-grid grid grid-cols-2 gap-[var(--site-card-gap,20px)]">
             {cat.projects.map((p, i) => (
               <ProjectCard
                 key={p.id}

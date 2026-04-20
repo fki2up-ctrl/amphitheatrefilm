@@ -188,6 +188,7 @@ export default function Editor({ open, onClose }) {
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto pretty-scroll px-5 py-5 space-y-8">
                   <TypographySection />
+                  <SiteConfigSection c={c} />
                   <ProfileSection c={c} />
                   <FeaturedVideoSection c={c} />
                   <ContactSection c={c} />
@@ -326,6 +327,128 @@ export default function Editor({ open, onClose }) {
 // ---------------------------------------------------------------------------
 // Sections
 // ---------------------------------------------------------------------------
+
+function SiteConfigSection({ c }) {
+  const { siteConfig, setSiteConfig, resetSiteConfig, saveSiteConfig, hasSupabase } = c;
+  const [status, setStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+  const [err, setErr] = useState('');
+
+  const doSync = async () => {
+    setStatus('saving');
+    setErr('');
+    const res = await saveSiteConfig();
+    if (res.ok) {
+      setStatus('saved');
+      setTimeout(() => setStatus('idle'), 2600);
+    } else {
+      setStatus('error');
+      setErr(res.error || 'Save failed');
+    }
+  };
+
+  const lbl = {
+    idle:   'Sync to Supabase',
+    saving: 'Syncing…',
+    saved:  'Synced',
+    error:  'Retry sync',
+  }[status];
+
+  return (
+    <Section
+      title="Layout & motion"
+      hint="Live-preview layout, typography sizes, and intro speed. Stored in site_settings.site_config (jsonb)."
+      action={
+        <button
+          type="button"
+          onClick={resetSiteConfig}
+          className="text-[10px] tracking-widest2 uppercase text-white/45 hover:text-white/85"
+        >
+          Reset
+        </button>
+      }
+    >
+      <p className="text-[10px] tracking-widest2 uppercase text-white/40">Layout</p>
+      <div className="grid grid-cols-2 gap-3">
+        <SliderField
+          label={`Sidebar width (${siteConfig.layout.sidebarWidth}px)`}
+          value={siteConfig.layout.sidebarWidth}
+          onChange={(v) => setSiteConfig({ layout: { sidebarWidth: Math.round(v) } })}
+          min={200}
+          max={360}
+          step={2}
+        />
+        <SliderField
+          label={`Grid columns (${siteConfig.layout.gridCols})`}
+          value={siteConfig.layout.gridCols}
+          onChange={(v) => setSiteConfig({ layout: { gridCols: Math.round(v) } })}
+          min={2}
+          max={5}
+          step={1}
+        />
+        <SliderField
+          label={`Card gap (${siteConfig.layout.cardGap}px)`}
+          value={siteConfig.layout.cardGap}
+          onChange={(v) => setSiteConfig({ layout: { cardGap: Math.round(v) } })}
+          min={0}
+          max={48}
+          step={1}
+        />
+      </div>
+
+      <p className="pt-2 text-[10px] tracking-widest2 uppercase text-white/40">Typography</p>
+      <div className="grid grid-cols-2 gap-3">
+        <SliderField
+          label={`Topic title (${siteConfig.typography.topicSize}px)`}
+          value={siteConfig.typography.topicSize}
+          onChange={(v) => setSiteConfig({ typography: { topicSize: Math.round(v) } })}
+          min={20}
+          max={72}
+          step={1}
+        />
+        <SliderField
+          label={`Body base (${siteConfig.typography.bodySize}px)`}
+          value={siteConfig.typography.bodySize}
+          onChange={(v) => setSiteConfig({ typography: { bodySize: Math.round(v) } })}
+          min={13}
+          max={20}
+          step={1}
+        />
+      </div>
+
+      <p className="pt-2 text-[10px] tracking-widest2 uppercase text-white/40">Animations</p>
+      <div className="grid grid-cols-2 gap-3">
+        <SliderField
+          label={`Intro speed (${siteConfig.animations.introSpeed.toFixed(2)}×)`}
+          value={siteConfig.animations.introSpeed}
+          onChange={(v) => setSiteConfig({ animations: { introSpeed: v } })}
+          min={0.4}
+          max={2.5}
+          step={0.05}
+        />
+      </div>
+
+      <div className="pt-2 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={doSync}
+          disabled={!hasSupabase || status === 'saving'}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-[11px] text-white hover:bg-white/15 hover:border-white/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          title={!hasSupabase ? 'Supabase not configured' : 'Persist to site_settings.site_config'}
+        >
+          {lbl}
+        </button>
+        {status === 'error' && err && (
+          <span className="text-[10px] text-red-300/90">{err}</span>
+        )}
+        {!hasSupabase && (
+          <span className="text-[10px] text-amber-300/80">
+            Changes preview locally — Supabase not connected.
+          </span>
+        )}
+      </div>
+    </Section>
+  );
+}
 
 function ProfileSection({ c }) {
   const { PROFILE, setProfile } = c;

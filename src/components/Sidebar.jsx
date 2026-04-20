@@ -30,7 +30,7 @@ export default function Sidebar({ onOpenEditor }) {
       initial={{ x: -300, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.9, ease: [0.65, 0, 0.35, 1], delay: 0.35 }}
-      className="hidden lg:flex fixed left-0 top-0 h-screen w-[280px] border-r border-white/5 bg-ink-950 z-40"
+      className="hidden lg:flex fixed left-0 top-0 h-screen w-[var(--site-sidebar-width,280px)] border-r border-white/5 bg-ink-950 z-40"
     >
       <div className="flex flex-col justify-between w-full pb-10">
         {/* Brand */}

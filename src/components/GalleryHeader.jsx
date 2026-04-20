@@ -59,7 +59,7 @@ export default function GalleryHeader() {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="font-display text-3xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight"
+            className="font-display text-3xl sm:text-5xl lg:text-[var(--site-topic-size,60px)] leading-[1.05] tracking-tight"
           >
             {title}
           </motion.h1>

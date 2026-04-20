@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useContent } from '../store/content';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 import {
   LAYOUT_ID_BRAND_NAME,
   LAYOUT_ID_BRAND_ROLE,
@@ -27,6 +28,9 @@ const PHASE1_MS = 2600; // "I wish to be a light painter"  enter(1.2s) + hold
 const PHASE2_MS = 2200; // Name + role — simple fade-in hold
 
 export default function Intro({ onComplete }) {
+  const { config } = useSiteSettings();
+  const speed = Number(config?.animations?.introSpeed) || 1;
+
   // 'p1' | 'p2' | 'done'
   const [phase, setPhase] = useState(() => {
     if (typeof window === 'undefined') return 'p1';
@@ -36,21 +40,23 @@ export default function Intro({ onComplete }) {
     return prefersReduced ? 'done' : 'p1';
   });
 
-  // Advance phases.
+  // Advance phases — each phase's hold scales with the introSpeed multiplier
+  // so the user can slow the whole intro down (introSpeed > 1) or rush it
+  // (< 1) from the editor without redeploying.
   useEffect(() => {
     if (phase === 'done') {
       onComplete?.();
       return;
     }
     if (phase === 'p1') {
-      const t = setTimeout(() => setPhase('p2'), PHASE1_MS);
+      const t = setTimeout(() => setPhase('p2'), PHASE1_MS * speed);
       return () => clearTimeout(t);
     }
     if (phase === 'p2') {
-      const t = setTimeout(() => setPhase('done'), PHASE2_MS);
+      const t = setTimeout(() => setPhase('done'), PHASE2_MS * speed);
       return () => clearTimeout(t);
     }
-  }, [phase, onComplete]);
+  }, [phase, onComplete, speed]);
 
   // Lock page scroll while the intro is on screen.
   useEffect(() => {
