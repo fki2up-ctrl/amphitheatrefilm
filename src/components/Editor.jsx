@@ -435,6 +435,8 @@ function SiteConfigSection({ c }) {
         />
       </div>
 
+      <IntroPreview speed={siteConfig.animations.introSpeed} />
+
       <div className="pt-2 flex items-center gap-3">
         <button
           type="button"
@@ -1201,6 +1203,62 @@ function ExportModal({ open, onClose, source }) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// IntroPreview component for Layout & motion panel
+// ---------------------------------------------------------------------------
+
+function IntroPreview({ speed }) {
+  const [phase, setPhase] = useState('p1'); // 'p1' | 'p2'
+
+  // Loop the preview every ~2.5s at 1× speed, scaled by the multiplier.
+  useEffect(() => {
+    const p1Ms = 800 * speed;
+    const p2Ms = 1000 * speed;
+    const t1 = setTimeout(() => setPhase('p2'), p1Ms);
+    const t2 = setTimeout(() => setPhase('p1'), p1Ms + p2Ms);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [speed]);
+
+  return (
+    <div className="rounded-lg border border-white/5 bg-ink-950/50 p-3 space-y-2">
+      <p className="text-[10px] tracking-widest2 uppercase text-white/40">Intro preview</p>
+      <div className="relative h-16 overflow-hidden rounded bg-ink-900/50">
+        <AnimatePresence mode="wait">
+          {phase === 'p1' && (
+            <motion.div
+              key="p1"
+              initial={{ opacity: 0, filter: 'blur(12px)' }}
+              animate={{ opacity: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, filter: 'blur(12px)' }}
+              transition={{ duration: 0.6 * speed, ease: 'easeOut' }}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <span className="text-xs text-white/90">I wish to be a light painter</span>
+            </motion.div>
+          )}
+          {phase === 'p2' && (
+            <motion.div
+              key="p2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 * speed, ease: 'easeOut' }}
+              className="absolute inset-0 flex flex-col items-center justify-center"
+            >
+              <span className="text-xs text-white font-display">Film Natthawut</span>
+              <span className="text-[10px] text-white/55">Director / Cinematographer</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <p className="text-[10px] text-white/35">Looping at {speed.toFixed(2)}× speed</p>
+    </div>
   );
 }
 
