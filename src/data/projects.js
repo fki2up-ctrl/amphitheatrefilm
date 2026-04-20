@@ -84,7 +84,7 @@ export const TOPICS = [
     }),
   ]),
 
-  topic("MV, Live Session & Short Film", [
+  topic("MV, Live Session & Short Films", [
     project({
       title:    "JACKIE JACKRIN THE FIRST QUARTER",
       subtitle: "25th BIRTHDAY PARTY",
