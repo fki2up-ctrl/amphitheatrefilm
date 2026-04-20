@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
@@ -18,13 +18,44 @@ import { usePhase, CATEGORY_ALL } from './flow/PhaseProvider';
 
 export default function App() {
   const { CATEGORIES, ALL_PROJECTS, SITE_ASSETS, PROFILE } = useContent();
-  const { phase, selectedCategory, completeIntro, skipToGallery } = usePhase();
+  const { phase, selectedCategory, completeIntro, skipToGallery, openCategory } = usePhase();
 
   // Hybrid view: 'all' shows the full long-scroll catalogue + FeaturedVideo;
   // any specific topic id collapses to a single-category grid with no
   // FeaturedVideo banner (GalleryHeader replaces that visual anchor).
   const singleCategoryId = selectedCategory === CATEGORY_ALL ? null : selectedCategory;
   const isAllView = !singleCategoryId;
+
+  // Swipe-to-change-category on mobile gallery. Ordered id list mirrors
+  // the Landing menu / MobileNav / GalleryHeader pill order.
+  const categoryOrder = useMemo(
+    () => [CATEGORY_ALL, ...CATEGORIES.map((c) => c.id)],
+    [CATEGORIES]
+  );
+  const touchStart = useRef(null);
+  const handleTouchStart = useCallback((e) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
+  }, []);
+  const handleTouchEnd = useCallback(
+    (e) => {
+      const s = touchStart.current;
+      if (!s) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - s.x;
+      const dy = t.clientY - s.y;
+      touchStart.current = null;
+      // Require strong horizontal intent to avoid hijacking vertical scroll.
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      const i = categoryOrder.indexOf(selectedCategory);
+      if (i < 0) return;
+      const next = dx < 0
+        ? categoryOrder[(i + 1) % categoryOrder.length]                          // swipe left  → next
+        : categoryOrder[(i - 1 + categoryOrder.length) % categoryOrder.length];  // swipe right → prev
+      if (next !== selectedCategory) openCategory(next);
+    },
+    [categoryOrder, selectedCategory, openCategory]
+  );
 
   // Intro finished — advance to the Landing hero (Chunk C+). Landing itself
   // will drive the transition to Gallery when the user picks a category.
@@ -136,6 +167,8 @@ export default function App() {
             // dominant; the gallery materialises out of the black at the
             // very end of the zoom.
             transition={{ duration: 0.7, ease: 'easeOut', delay: 0.55 }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
             <MobileNav />
             <Sidebar

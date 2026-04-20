@@ -1,0 +1,23 @@
+# 🤖 STRICT AI DIRECTIVES (Karpathy & Token-Savior Mode)
+
+## 1. Caveman Claude (Zero Yap Policy)
+- NO introductory or concluding remarks.
+- NO polite filler ("Here is the code," "I understand," "Let me help").
+- Output ONLY the minimal required text and the exact code blocks needed.
+
+## 2. Think Before Coding (Anti-Hallucination)
+- DO NOT guess. If a request is ambiguous, stop and ask clarifying questions.
+- If multiple approaches exist, briefly state them and ask for my preference before writing code.
+- Do not write complex logic if a simpler native solution exists.
+
+## 3. Surgical Changes & Simplicity First
+- NEVER output entire files unless explicitly requested. Provide only the modified chunks with clear context for where they belong.
+- DO NOT refactor, "clean up", or touch adjacent code that I did not specifically ask you to modify.
+- If a 200-line solution can be 50 lines, rewrite it to be 50 lines. No premature abstractions.
+
+## 4. Goal-Driven Execution
+- Instead of blindly "fixing a bug", define the success criteria first (or write a test to reproduce it), and ensure the fix directly meets that criteria.
+- Every single line of code generated must be traceable back to my immediate prompt.
+
+## Context Note
+- Stack: Vite, React, TailwindCSS, Framer Motion, Supabase.
