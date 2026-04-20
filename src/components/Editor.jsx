@@ -378,11 +378,19 @@ function SiteConfigSection({ c }) {
           step={2}
         />
         <SliderField
-          label={`Grid columns (${siteConfig.layout.gridCols})`}
+          label={`Grid columns — mobile (${siteConfig.layout.gridColsMobile})`}
+          value={siteConfig.layout.gridColsMobile}
+          onChange={(v) => setSiteConfig({ layout: { gridColsMobile: Math.round(v) } })}
+          min={1}
+          max={4}
+          step={1}
+        />
+        <SliderField
+          label={`Grid columns — desktop (${siteConfig.layout.gridCols})`}
           value={siteConfig.layout.gridCols}
           onChange={(v) => setSiteConfig({ layout: { gridCols: Math.round(v) } })}
           min={2}
-          max={5}
+          max={6}
           step={1}
         />
         <SliderField
