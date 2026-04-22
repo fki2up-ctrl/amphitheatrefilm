@@ -13,6 +13,7 @@ import { UploadCloud, Loader2, Check, AlertCircle, Film } from 'lucide-react';
 import { uploadVideoToB2 } from '../lib/b2Upload';
 import { supabase, hasSupabase } from '../lib/supabase';
 import SmartVideo from './SmartVideo';
+import AssetPicker from './AssetPicker';
 
 /**
  * @param {object} props
@@ -90,11 +91,12 @@ export default function VideoUploader({
 
   return (
     <div className={compact ? 'space-y-1.5' : 'space-y-2'}>
-      {label && (
-        <span className={`block ${compact ? 'text-[10px]' : 'text-[11px]'} text-white/45`}>
-          {label}
+      <div className="flex items-center justify-between gap-2">
+        <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-white/45`}>
+          {label || ''}
         </span>
-      )}
+        <AssetPicker kind="video" value={value} onPick={onChange} compact={compact} />
+      </div>
 
       <div
         onDragOver={onDragOver}

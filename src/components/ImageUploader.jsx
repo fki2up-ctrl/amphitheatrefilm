@@ -10,6 +10,7 @@ import { useRef, useState } from 'react';
 import { UploadCloud, Loader2, Check, AlertCircle, ImageIcon } from 'lucide-react';
 import { uploadImageToCloudinary, hasCloudinary } from '../lib/cloudinaryUpload';
 import { supabase, hasSupabase } from '../lib/supabase';
+import AssetPicker from './AssetPicker';
 
 /**
  * @param {object} props
@@ -93,11 +94,12 @@ export default function ImageUploader({
 
   return (
     <div className={compact ? 'space-y-1.5' : 'space-y-2'}>
-      {label && (
-        <span className={`block ${compact ? 'text-[10px]' : 'text-[11px]'} text-white/45`}>
-          {label}
+      <div className="flex items-center justify-between gap-2">
+        <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-white/45`}>
+          {label || ''}
         </span>
-      )}
+        <AssetPicker kind="image" value={value} onPick={onChange} compact={compact} />
+      </div>
 
       <div
         onDragOver={onDragOver}
