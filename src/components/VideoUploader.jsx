@@ -49,7 +49,7 @@ export default function VideoUploader({
     setProgress(0);
     setError('');
     try {
-      const { url, bytes, contentType } = await uploadVideoToB2(file, (pct) =>
+      const { url, filePath, bytes, contentType } = await uploadVideoToB2(file, (pct) =>
         setProgress(pct),
       );
       onChange?.(url);
@@ -62,6 +62,7 @@ export default function VideoUploader({
             filename: file.name,
             size_bytes: bytes,
             content_type: contentType,
+            meta: { filePath },
           });
         } catch (e) {
           // eslint-disable-next-line no-console

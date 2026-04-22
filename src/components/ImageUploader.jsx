@@ -46,7 +46,7 @@ export default function ImageUploader({
     setProgress(0);
     setError('');
     try {
-      const { url, bytes, width, height, format } = await uploadImageToCloudinary(
+      const { url, publicId, bytes, width, height, format } = await uploadImageToCloudinary(
         file,
         (pct) => setProgress(pct),
       );
@@ -64,7 +64,7 @@ export default function ImageUploader({
             content_type: file.type,
             width,
             height,
-            meta: { format },
+            meta: { format, publicId },
           });
         } catch (e) {
           // eslint-disable-next-line no-console

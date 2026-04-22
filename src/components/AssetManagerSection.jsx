@@ -142,11 +142,21 @@ export default function AssetManagerSection() {
   };
 
   const removeAsset = async (asset) => {
-    if (!window.confirm(`Remove "${asset.filename || 'this asset'}" from the library? The original file will NOT be deleted from Cloudinary/Backblaze.`)) return;
+    const where = asset.kind === 'image' ? 'Cloudinary' : 'Backblaze B2';
+    if (!window.confirm(`Permanently delete "${asset.filename || 'this asset'}" from ${where} AND the library? This cannot be undone.`)) return;
     try {
-      const { error } = await supabase.from('assets').delete().eq('id', asset.id);
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('delete-asset', {
+        body: { assetId: asset.id },
+      });
+      if (error) throw new Error(error.message || 'Delete failed');
+      if (data?.error) throw new Error(data.error);
       setAssets((list) => list.filter((a) => a.id !== asset.id));
+      if (Array.isArray(data?.warnings) && data.warnings.length) {
+        // Surface storage-delete warnings without blocking the UI update.
+        setErr(`Removed from library. Warning: ${data.warnings.join(' | ')}`);
+      } else {
+        setErr('');
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[AssetManager] delete failed:', e);
