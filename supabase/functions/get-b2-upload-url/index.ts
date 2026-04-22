@@ -1,21 +1,22 @@
 // ---------------------------------------------------------------------------
 // Supabase Edge Function: get-b2-upload-url
 //
-// Authenticates the caller with Supabase Auth, then talks to Backblaze B2 to
-// mint a one-shot upload URL + authorization token. Keeps the B2 master
-// credentials server-side (never exposed to the browser).
+// Authenticates the caller with Supabase Auth, then mints a **presigned S3
+// PUT URL** for Backblaze B2's S3-compatible API. Using S3 presigning (instead
+// of B2's native b2_upload_file) is critical for browser uploads: S3 endpoints
+// respect CORS preflight without requiring auth on OPTIONS. B2's native upload
+// endpoint returns 401 on OPTIONS, which breaks every modern browser.
 //
 // Deploy:
 //   supabase functions deploy get-b2-upload-url --no-verify-jwt
 //
 // Required secrets (set via `supabase secrets set KEY=value`):
-//   B2_KEY_ID            — B2 Application Key ID (with write on the bucket)
-//   B2_APPLICATION_KEY   — matching application key secret
-//   B2_BUCKET_ID         — the target bucket's ID
-//   B2_BUCKET_NAME       — the target bucket's name (used when no base URL is set)
+//   B2_KEY_ID            — B2 Application Key ID (S3-compatible = accessKeyId)
+//   B2_APPLICATION_KEY   — matching application key (S3-compatible = secretAccessKey)
+//   B2_BUCKET_NAME       — the target bucket's name
+//   B2_S3_ENDPOINT       — S3 endpoint, e.g. https://s3.us-east-005.backblazeb2.com
+//   B2_S3_REGION         — S3 region matching the endpoint, e.g. us-east-005
 //   B2_PUBLIC_BASE_URL   — optional, e.g. https://video.example.com
-//                           (Cloudflare CNAME with a Transform Rule that
-//                            rewrites `/` → `/file/<bucket>/`)
 //   B2_FILE_PREFIX       — optional, e.g. "videos/" or empty for bucket root
 // ---------------------------------------------------------------------------
 
@@ -23,6 +24,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.203.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4';
+import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20';
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -35,25 +37,6 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
-}
-
-async function authorizeB2(keyId: string, appKey: string) {
-  const creds = btoa(`${keyId}:${appKey}`);
-  const r = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
-    headers: { Authorization: `Basic ${creds}` },
-  });
-  if (!r.ok) throw new Error(`b2_authorize_account ${r.status}: ${await r.text()}`);
-  return r.json() as Promise<any>;
-}
-
-async function getUploadUrl(apiUrl: string, authToken: string, bucketId: string) {
-  const r = await fetch(`${apiUrl}/b2api/v3/b2_get_upload_url`, {
-    method: 'POST',
-    headers: { Authorization: authToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bucketId }),
-  });
-  if (!r.ok) throw new Error(`b2_get_upload_url ${r.status}: ${await r.text()}`);
-  return r.json() as Promise<{ uploadUrl: string; authorizationToken: string }>;
 }
 
 serve(async (req) => {
@@ -93,16 +76,17 @@ serve(async (req) => {
   // ------------------------------------------------------------------
   // Read B2 secrets & build the final file path.
   // ------------------------------------------------------------------
-  const keyId      = Deno.env.get('B2_KEY_ID');
-  const appKey     = Deno.env.get('B2_APPLICATION_KEY');
-  const bucketId   = Deno.env.get('B2_BUCKET_ID');
-  const bucketName = Deno.env.get('B2_BUCKET_NAME');
-  const publicBase = Deno.env.get('B2_PUBLIC_BASE_URL');       // optional
-  const prefix     = Deno.env.get('B2_FILE_PREFIX') || '';     // optional
+  const keyId       = Deno.env.get('B2_KEY_ID');
+  const appKey      = Deno.env.get('B2_APPLICATION_KEY');
+  const bucketName  = Deno.env.get('B2_BUCKET_NAME');
+  const s3Endpoint  = Deno.env.get('B2_S3_ENDPOINT');     // e.g. https://s3.us-east-005.backblazeb2.com
+  const s3Region    = Deno.env.get('B2_S3_REGION');       // e.g. us-east-005
+  const publicBase  = Deno.env.get('B2_PUBLIC_BASE_URL'); // optional
+  const prefix      = Deno.env.get('B2_FILE_PREFIX') || '';
 
-  if (!keyId || !appKey || !bucketId || !bucketName) {
+  if (!keyId || !appKey || !bucketName || !s3Endpoint || !s3Region) {
     return json(
-      { error: 'Server missing B2 secrets (B2_KEY_ID, B2_APPLICATION_KEY, B2_BUCKET_ID, B2_BUCKET_NAME).' },
+      { error: 'Server missing B2 S3 secrets (B2_KEY_ID, B2_APPLICATION_KEY, B2_BUCKET_NAME, B2_S3_ENDPOINT, B2_S3_REGION).' },
       500,
     );
   }
@@ -113,22 +97,34 @@ serve(async (req) => {
   const filePath   = `${safePrefix}${stamp}-${rawName}`;
 
   try {
-    const auth     = await authorizeB2(keyId, appKey);
-    // B2 v3 returns apiInfo.storageApi.apiUrl — older SDKs had it flat. Support both.
-    const apiUrl   = auth.apiInfo?.storageApi?.apiUrl || auth.apiUrl;
-    const authTok  = auth.authorizationToken;
-    const upload   = await getUploadUrl(apiUrl, authTok, bucketId);
+    // --- Build a presigned S3 PUT URL (valid for 10 minutes) -----------
+    // aws4fetch signs the query string so the browser never has to attach
+    // any AWS/B2 credentials — it just PUTs the file body to the URL.
+    const aws = new AwsClient({
+      accessKeyId:     keyId,
+      secretAccessKey: appKey,
+      service:         's3',
+      region:          s3Region,
+    });
 
-    // Public URL — prefer the user's Cloudflare CNAME (clean, branded, cached).
-    // Fall back to the raw B2 f000/file URL so dev still works before DNS is set.
-    const downloadUrl = auth.apiInfo?.storageApi?.downloadUrl || auth.downloadUrl;
+    // S3 object URL shape: {endpoint}/{bucket}/{key}
+    const cleanEndpoint = s3Endpoint.replace(/\/+$/, '');
+    const objectUrl = `${cleanEndpoint}/${bucketName}/${encodeURI(filePath)}?X-Amz-Expires=600`;
+
+    const signed = await aws.sign(
+      new Request(objectUrl, {
+        method:  'PUT',
+        headers: { 'Content-Type': contentType },
+      }),
+      { aws: { signQuery: true } },
+    );
+
     const publicUrl = publicBase
       ? `${publicBase.replace(/\/+$/, '')}/${filePath}`
-      : `${downloadUrl}/file/${bucketName}/${filePath}`;
+      : `${cleanEndpoint}/${bucketName}/${filePath}`;
 
     return json({
-      uploadUrl:          upload.uploadUrl,
-      authorizationToken: upload.authorizationToken,
+      uploadUrl:   signed.url,   // client does: axios.put(uploadUrl, file, { headers: { 'Content-Type': contentType } })
       filePath,
       publicUrl,
       contentType,

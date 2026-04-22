@@ -27,7 +27,7 @@ function sanitizeFileName(name) {
 }
 
 /**
- * Request upload credentials from the Supabase Edge Function.
+ * Request a presigned S3 PUT URL from the Supabase Edge Function.
  * @param {string} fileName
  * @param {string} contentType
  */
@@ -43,14 +43,14 @@ async function requestUploadUrl(fileName, contentType) {
     body: { fileName, contentType },
   });
   if (error) throw new Error(error.message || 'Edge function failed.');
-  if (!data?.uploadUrl || !data?.authorizationToken) {
+  if (!data?.uploadUrl) {
     throw new Error('Edge function returned invalid credentials.');
   }
-  return data; // { uploadUrl, authorizationToken, filePath, publicUrl }
+  return data; // { uploadUrl, filePath, publicUrl, contentType }
 }
 
 /**
- * Upload a video file to Backblaze B2.
+ * Upload a video file to Backblaze B2 via its S3-compatible presigned URL.
  *
  * @param {File} file
  * @param {(pct:number)=>void} onProgress
@@ -70,26 +70,19 @@ export async function uploadVideoToB2(file, onProgress = () => {}) {
       : 'video/mp4';
 
   const safeName = sanitizeFileName(file.name || `upload-${Date.now()}.mp4`);
+  const creds    = await requestUploadUrl(safeName, contentType);
 
-  const creds = await requestUploadUrl(safeName, contentType);
-
-  await axios.post(creds.uploadUrl, file, {
-    headers: {
-      Authorization:        creds.authorizationToken,
-      'X-Bz-File-Name':     encodeURIComponent(creds.filePath),
-      'Content-Type':       contentType,
-      // Telling B2 to skip the SHA1 integrity check — simpler for huge files.
-      // B2 still validates the upload completes end-to-end.
-      'X-Bz-Content-Sha1':  'do_not_verify',
-    },
+  // S3 presigned PUT — URL carries all auth via query params. Only the
+  // Content-Type header must match what was signed server-side.
+  await axios.put(creds.uploadUrl, file, {
+    headers: { 'Content-Type': contentType },
     onUploadProgress: (evt) => {
       if (!evt.total) return;
       onProgress(Math.round((evt.loaded / evt.total) * 100));
     },
-    // Large files — axios' default is no timeout, but be explicit.
-    timeout: 0,
+    timeout:          0,
     maxContentLength: Infinity,
-    maxBodyLength: Infinity,
+    maxBodyLength:    Infinity,
   });
 
   return {
