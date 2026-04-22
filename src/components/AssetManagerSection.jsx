@@ -94,21 +94,43 @@ export default function AssetManagerSection() {
     }
     setUploading({ kind: isImage ? 'image' : 'video', name: file.name, progress: 0 });
     try {
+      let row;
       if (isImage) {
-        await uploadImageToCloudinary(file, (p) =>
+        const r = await uploadImageToCloudinary(file, (p) =>
           setUploading((u) => u && { ...u, progress: p }),
         );
+        row = {
+          kind:         'image',
+          url:          r.url,
+          filename:     file.name,
+          size_bytes:   r.bytes,
+          content_type: file.type,
+          width:        r.width,
+          height:       r.height,
+          meta:         { format: r.format, publicId: r.publicId },
+        };
       } else {
-        await uploadVideoToB2(file, (p) =>
+        const r = await uploadVideoToB2(file, (p) =>
           setUploading((u) => u && { ...u, progress: p }),
         );
+        row = {
+          kind:         'video',
+          url:          r.url,
+          filename:     file.name,
+          size_bytes:   r.bytes,
+          content_type: r.contentType,
+          meta:         { filePath: r.filePath },
+        };
       }
-      // Row is inserted by the individual uploader helpers (ImageUploader /
-      // VideoUploader) — here we call the underlying lib helpers directly
-      // because we don't need the URL to land on a specific field. Insert
-      // manually so the library list stays in sync.
-      // (Nothing to do — refresh picks up rows inserted by the `assets`
-      // insert below.)
+      // Log the row so it appears in the library grid and future pickers.
+      try {
+        const { error: insErr } = await supabase.from('assets').insert(row);
+        if (insErr) throw insErr;
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[AssetManager] assets insert failed:', e?.message || e);
+        setUploadErr(`Uploaded, but library log failed: ${e?.message || e}`);
+      }
       setUploading(null);
       await refresh();
     } catch (e) {
