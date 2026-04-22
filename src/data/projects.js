@@ -27,7 +27,7 @@ export const PROFILE = {
   siteTitle:           "Film Natthawut - Portfolio",
   siteDescription:     "",
   favicon:             "/icons/favicon-32.png",
-  landingVideo:        "",
+  landingVideo:        "https://video.amphitheatrefilm.com/amphitheatrefilm-Showreel-2024.mp4",
   featuredVideo:       "",
   featuredVideoTitle:  "",
   featuredVideoPoster: "",
