@@ -21,7 +21,70 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from 'https://deno.land/std@0.203.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4';
-import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20';
+
+/**
+ * Fully purge every version of a single B2 object (including hide markers)
+ * via the native B2 API. Using S3 DELETE on a versioned bucket only adds a
+ * hide marker — which then lingers until the lifecycle rule catches up. This
+ * helper hard-deletes everything immediately.
+ */
+async function purgeB2Versions(
+  keyId: string,
+  appKey: string,
+  bucketName: string,
+  fileName: string,
+): Promise<number> {
+  // 1. Authorize — returns an apiUrl + session token scoped to this key.
+  const authRes = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', {
+    headers: { Authorization: 'Basic ' + btoa(`${keyId}:${appKey}`) },
+  });
+  if (!authRes.ok) throw new Error(`b2_authorize_account ${authRes.status}: ${await authRes.text()}`);
+  const authJson: any = await authRes.json();
+  const apiUrl = authJson.apiInfo.storageApi.apiUrl as string;
+  const token  = authJson.authorizationToken as string;
+  let   bucketId = authJson.apiInfo.storageApi.allowed?.bucketId as string | undefined;
+
+  // 2. If the key isn't bucket-scoped, resolve the bucketId by name.
+  if (!bucketId) {
+    const lbRes = await fetch(`${apiUrl}/b2api/v3/b2_list_buckets`, {
+      method:  'POST',
+      headers: { Authorization: token, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ accountId: authJson.accountId, bucketName }),
+    });
+    if (!lbRes.ok) throw new Error(`b2_list_buckets ${lbRes.status}: ${await lbRes.text()}`);
+    const lbJson: any = await lbRes.json();
+    bucketId = lbJson.buckets?.[0]?.bucketId;
+  }
+  if (!bucketId) throw new Error(`B2 bucket "${bucketName}" not found.`);
+
+  // 3. List every version of this exact filename.
+  const lvRes = await fetch(`${apiUrl}/b2api/v3/b2_list_file_versions`, {
+    method:  'POST',
+    headers: { Authorization: token, 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      bucketId,
+      startFileName: fileName,
+      prefix:        fileName,
+      maxFileCount:  100,
+    }),
+  });
+  if (!lvRes.ok) throw new Error(`b2_list_file_versions ${lvRes.status}: ${await lvRes.text()}`);
+  const lvJson: any = await lvRes.json();
+  const versions = (lvJson.files || []).filter((f: any) => f.fileName === fileName);
+
+  // 4. Delete each version (including hide markers).
+  for (const v of versions) {
+    const dRes = await fetch(`${apiUrl}/b2api/v3/b2_delete_file_version`, {
+      method:  'POST',
+      headers: { Authorization: token, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ fileId: v.fileId, fileName: v.fileName }),
+    });
+    if (!dRes.ok) {
+      throw new Error(`b2_delete_file_version ${dRes.status}: ${await dRes.text()}`);
+    }
+  }
+  return versions.length;
+}
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -125,31 +188,24 @@ serve(async (req) => {
         }
       }
     } else if (asset.kind === 'video') {
-      // --- Delete from B2 via S3-compatible DELETE ------------------------
+      // --- Hard-delete every version of the B2 object via native B2 API.
+      //     S3 DELETE would only write a hide marker on a versioned bucket;
+      //     we want the bytes gone immediately.
       const keyId    = Deno.env.get('B2_KEY_ID');
       const appKey   = Deno.env.get('B2_APPLICATION_KEY');
       const bucket   = Deno.env.get('B2_BUCKET_NAME');
-      const endpoint = Deno.env.get('B2_S3_ENDPOINT');
-      const region   = Deno.env.get('B2_S3_REGION');
       const filePath = asset.meta?.filePath;
 
-      if (!keyId || !appKey || !bucket || !endpoint || !region) {
-        warnings.push('B2 S3 secrets not set — DB row will be removed, but the file stays on Backblaze.');
+      if (!keyId || !appKey || !bucket) {
+        warnings.push('B2 secrets not set — DB row will be removed, but the file stays on Backblaze.');
       } else if (!filePath) {
         warnings.push('Asset row has no filePath in meta — cannot locate the B2 object to delete.');
       } else {
-        const aws = new AwsClient({
-          accessKeyId:     keyId,
-          secretAccessKey: appKey,
-          service:         's3',
-          region,
-        });
-        const cleanEndpoint = endpoint.replace(/\/+$/, '');
-        const url = `${cleanEndpoint}/${bucket}/${encodeURI(filePath)}`;
-        const r   = await aws.fetch(url, { method: 'DELETE' });
-        // S3 DELETE returns 204 on success, also 200 on some implementations.
-        if (r.status !== 204 && r.status !== 200) {
-          warnings.push(`B2 delete failed (${r.status}): ${await r.text()}`);
+        try {
+          const n = await purgeB2Versions(keyId, appKey, bucket, filePath);
+          if (n === 0) warnings.push(`B2: no versions found for ${filePath}.`);
+        } catch (e) {
+          warnings.push(`B2 purge failed: ${(e as Error).message}`);
         }
       }
     } else {
