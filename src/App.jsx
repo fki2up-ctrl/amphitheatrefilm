@@ -7,7 +7,6 @@ import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import MobileTopBar from './components/MobileTopBar';
 import ProjectGrid from './components/ProjectGrid';
-import FeaturedVideo from './components/FeaturedVideo';
 import VideoModal from './components/VideoModal';
 import useActiveSection from './hooks/useActiveSection';
 import { useContent } from './store/content';
@@ -217,7 +216,6 @@ export default function App() {
             <main className="relative z-10 lg:ml-[var(--site-sidebar-width,280px)]">
               <div className="px-4 sm:px-8 lg:px-12 pt-[calc(var(--mobile-header-height,128px)+16px)] lg:pt-16 pb-28 lg:pb-24">
                 <GalleryHeader />
-                {isAllView && <FeaturedVideo onOpen={setOpenProject} />}
                 <ProjectGrid
                   onOpen={setOpenProject}
                   filterCategoryId={singleCategoryId}

@@ -31,10 +31,8 @@
 //   frame pop" hiccup that makes video heroes feel cheap.
 // ---------------------------------------------------------------------------
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import ReactPlayer from 'react-player';
 import { parseYouTubeId } from '../lib/embed';
+import SmartVideo, { isDirectVideoUrl } from './SmartVideo';
 
 const DEBUG = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 
@@ -46,10 +44,8 @@ export default function BackgroundVideo({
                     // render their own overlay outside)
   className = '',
   onReady,
+  poster,
 }) {
-  const [ready, setReady] = useState(false);
-  const [errored, setErrored] = useState(false);
-
   // If no URL is configured, render a visible placeholder in dev so the
   // caller can tell at a glance that PROFILE.featuredVideo isn't set. In
   // production this renders nothing (silent fallback to the layer behind).
@@ -66,10 +62,10 @@ export default function BackgroundVideo({
   }
 
   const ytId = parseYouTubeId(url);
+  const direct = isDirectVideoUrl(url);
   if (DEBUG) {
-    // One-time diagnostic so it's obvious in the console whether the URL
-    // was recognised as YouTube or sent to react-player's file player.
-    console.info('[BackgroundVideo] mounting with url =', url, 'ytId =', ytId);
+    console.info('[BackgroundVideo] mounting with url =', url,
+      'ytId =', ytId, 'direct =', direct);
   }
 
   // react-player YouTube config: host switch + comprehensive playerVars.
@@ -92,7 +88,6 @@ export default function BackgroundVideo({
             playsinline:    1,
             cc_load_policy: 0,
           },
-          // Host swap — react-player exposes this via `embedOptions`.
           embedOptions: {
             host: 'https://www.youtube-nocookie.com',
           },
@@ -100,66 +95,37 @@ export default function BackgroundVideo({
       }
     : undefined;
 
-  const handleReady = () => {
-    if (DEBUG) console.info('[BackgroundVideo] onReady fired');
-    setReady(true);
-    onReady?.();
-  };
-
-  const handleError = (err) => {
-    console.error('[BackgroundVideo] playback error:', err);
-    setErrored(true);
-    // Still flip "ready" so the fade-in overlay lifts rather than hanging
-    // on a black screen forever.
-    setReady(true);
-    onReady?.();
-  };
+  // Direct MP4/WebM URLs don't need the aggressive YouTube-chrome-hiding
+  // overscale — they have no branding to crop. Scale 1 keeps the video
+  // pixel-perfect. Callers can still override via the `scale` prop.
+  const effectiveScale = direct ? 1 : scale;
 
   return (
-    <motion.div
+    <div
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 overflow-hidden bg-black ${className}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: ready ? 1 : 0 }}
-      transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
     >
-      {/* Inner stage — centred, scaled up, sized with the classic
-          max(100vw, 177.78vh) / max(100vh, 56.25vw) trick so the 16:9 video
-          truly covers the viewport regardless of aspect (portrait, square,
-          ultrawide, etc.). */}
+      {/* Inner stage — centred, sized with max(100vw, 177.78vh) /
+          max(100vh, 56.25vw) so a 16:9 video covers the viewport at every
+          aspect ratio (portrait, square, ultrawide). */}
       <div
         className="absolute top-1/2 left-1/2"
         style={{
           width:  'max(100vw, 177.78vh)',
           height: 'max(100vh, 56.25vw)',
-          transform: `translate(-50%, -50%) scale(${scale})`,
+          transform: `translate(-50%, -50%) scale(${effectiveScale})`,
           transformOrigin: 'center center',
         }}
       >
-        <ReactPlayer
+        <SmartVideo
           url={url}
-          playing
-          loop
           muted={muted}
-          width="100%"
-          height="100%"
-          playsinline
-          controls={false}
-          config={youtubeConfig}
-          onReady={handleReady}
-          onError={handleError}
-          style={{ pointerEvents: 'none' }}
+          poster={poster}
+          playerConfig={youtubeConfig}
+          onReady={onReady}
         />
-
-        {DEBUG && errored && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-red-300 text-xs text-center px-6">
-            BackgroundVideo: playback error — check the console
-          </div>
-        )}
       </div>
 
-      {/* Optional dark gradient overlay for text legibility. Callers can opt
-          out and render their own; the default is a faint bottom gradient. */}
       {overlay && (
         <div
           aria-hidden="true"
@@ -170,6 +136,6 @@ export default function BackgroundVideo({
           }}
         />
       )}
-    </motion.div>
+    </div>
   );
 }

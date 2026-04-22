@@ -190,7 +190,7 @@ export default function Editor({ open, onClose }) {
                   <TypographySection />
                   <SiteConfigSection c={c} />
                   <ProfileSection c={c} />
-                  <FeaturedVideoSection c={c} />
+                  <LandingVideoSection c={c} />
                   <ContactSection c={c} />
                   <BackgroundSection c={c} />
                   <TopicsSection c={c} />
@@ -652,64 +652,23 @@ function ProfileSection({ c }) {
         </div>
       </Collapsible>
 
-      {/* --- Landing background video --------------------------------------- */}
-      <Collapsible title="Landing background video">
-        <Field
-          label="Video URL (YouTube, Vimeo, Cloudinary mp4, or any direct video URL)"
-          value={PROFILE.landingVideo || ''}
-          onChange={(v) => setProfile({ landingVideo: v })}
-          placeholder="https://youtu.be/…  or  https://vimeo.com/…"
-          hint="Plays full-screen behind the landing menu. Leave empty to fall back to the Featured video, then the built-in default."
-        />
-      </Collapsible>
     </Section>
   );
 }
 
-function FeaturedVideoSection({ c }) {
+function LandingVideoSection({ c }) {
   const { PROFILE, setProfile } = c;
-  const url = PROFILE.featuredVideo || '';
-  const poster = PROFILE.featuredVideoPoster || guessPreviewUrl(url);
-
   return (
     <Section
-      title="Main / Featured video"
-      hint="Shown as a big hero banner at the top of the site (desktop & mobile). Leave the URL empty to hide it."
+      title="Landing background video"
+      hint="Plays full-screen behind the landing menu. Supports YouTube, Vimeo, or direct MP4 / WebM URLs."
     >
-      {poster && url && (
-        <div
-          className="relative w-full overflow-hidden rounded-md bg-ink-800 ring-1 ring-white/10"
-          style={{ aspectRatio: '16 / 9' }}
-        >
-          <img
-            src={previewSrc(poster, 800)}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={(e) => (e.currentTarget.style.display = 'none')}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink-950/60 to-transparent" />
-          <span className="absolute bottom-2 left-3 text-[10px] tracking-widest2 uppercase text-white/70">
-            Preview
-          </span>
-        </div>
-      )}
       <Field
-        label="Video URL (YouTube, Vimeo, or Instagram)"
-        value={url}
-        onChange={(v) => setProfile({ featuredVideo: v })}
-        placeholder="https://youtu.be/…"
-      />
-      <Field
-        label="Title (optional)"
-        value={PROFILE.featuredVideoTitle || ''}
-        onChange={(v) => setProfile({ featuredVideoTitle: v })}
-        placeholder="e.g. Showreel 2025"
-      />
-      <Field
-        label="Custom poster image (optional — YouTube auto-derives)"
-        value={PROFILE.featuredVideoPoster || ''}
-        onChange={(v) => setProfile({ featuredVideoPoster: v })}
-        placeholder="https://…"
+        label="Video URL"
+        value={PROFILE.landingVideo || ''}
+        onChange={(v) => setProfile({ landingVideo: v })}
+        placeholder="https://cdn.amphitheatrefilm.com/hero.mp4"
+        hint="For the cleanest, no-logo cinematic look, paste a direct MP4 / WebM URL served from Backblaze B2 via your Cloudflare CDN (e.g. https://video.amphitheatrefilm.com/showreel.mp4). YouTube / Vimeo links still work. Leave empty to fall back to the built-in default."
       />
     </Section>
   );

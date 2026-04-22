@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
 import { useContent } from '../store/content';
 import { resolveEmbed } from '../lib/embed';
+import SmartVideo, { isDirectVideoUrl } from './SmartVideo';
 
 // Derive a reasonable poster image when none is supplied.
 function autoPoster(url) {
@@ -27,9 +28,11 @@ export default function FeaturedVideo({ onOpen }) {
   const poster = PROFILE.featuredVideoPoster || autoPoster(url);
   const title = PROFILE.featuredVideoTitle || 'Featured';
 
+  // Direct MP4/WebM URLs (e.g. Backblaze B2 via Cloudflare CDN) and
   // Instagram iframes carry their own chrome — for them we route the click
   // to the global VideoModal instead of playing inline (keeps the hero clean).
-  const inlineSupported = info.kind === 'youtube' || info.kind === 'vimeo';
+  const direct = isDirectVideoUrl(url);
+  const inlineSupported = direct || info.kind === 'youtube' || info.kind === 'vimeo';
 
   const handleClick = () => {
     if (inlineSupported) {
@@ -96,6 +99,15 @@ export default function FeaturedVideo({ onOpen }) {
               </div>
             )}
           </>
+        ) : direct ? (
+          <SmartVideo
+            url={url}
+            poster={poster}
+            controls
+            muted={false}
+            loop={false}
+            className="absolute inset-0"
+          />
         ) : (
           <iframe
             src={info.embedUrl + (info.embedUrl.includes('?') ? '&' : '?') + 'autoplay=1'}
