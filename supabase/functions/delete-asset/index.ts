@@ -156,6 +156,59 @@ serve(async (req) => {
       warnings.push(`Unknown asset kind "${asset.kind}" — deleting DB row only.`);
     }
 
+    // --- Cascade: null out any references to this URL in projects /
+    //              site_settings so the Landing / Gallery don't break. -----
+    const targetUrl = asset.url;
+    if (targetUrl) {
+      // projects.image and projects.url can both reference uploaded assets.
+      const { error: pImgErr } = await supabase
+        .from('projects')
+        .update({ image: '' })
+        .eq('image', targetUrl);
+      if (pImgErr) warnings.push(`projects.image cleanup: ${pImgErr.message}`);
+
+      const { error: pUrlErr } = await supabase
+        .from('projects')
+        .update({ url: '' })
+        .eq('url', targetUrl);
+      if (pUrlErr) warnings.push(`projects.url cleanup: ${pUrlErr.message}`);
+
+      // site_settings.site_config is a JSONB blob holding the PROFILE object
+      // (landingVideo, featuredVideo, favicon, featuredVideoPoster, etc).
+      // Fetch, deep-clean every string value equal to the deleted URL, write back.
+      const { data: ss, error: ssFetchErr } = await supabase
+        .from('site_settings')
+        .select('id, site_config')
+        .limit(1)
+        .maybeSingle();
+      if (ssFetchErr) {
+        warnings.push(`site_settings fetch: ${ssFetchErr.message}`);
+      } else if (ss?.site_config) {
+        const cleaned = JSON.parse(JSON.stringify(ss.site_config));
+        let changed = false;
+        const stripMatches = (obj: any) => {
+          if (!obj || typeof obj !== 'object') return;
+          for (const k of Object.keys(obj)) {
+            const v = obj[k];
+            if (typeof v === 'string' && v === targetUrl) {
+              obj[k] = '';
+              changed = true;
+            } else if (v && typeof v === 'object') {
+              stripMatches(v);
+            }
+          }
+        };
+        stripMatches(cleaned);
+        if (changed) {
+          const { error: ssUpdErr } = await supabase
+            .from('site_settings')
+            .update({ site_config: cleaned })
+            .eq('id', ss.id);
+          if (ssUpdErr) warnings.push(`site_settings update: ${ssUpdErr.message}`);
+        }
+      }
+    }
+
     // --- Always remove the DB row (best-effort delete pattern) -----------
     const { error: delErr } = await supabase.from('assets').delete().eq('id', assetId);
     if (delErr) throw new Error(`DB delete failed: ${delErr.message}`);

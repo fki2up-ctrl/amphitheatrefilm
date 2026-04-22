@@ -95,27 +95,35 @@ export default function BackgroundVideo({
       }
     : undefined;
 
-  // Direct MP4/WebM URLs don't need the aggressive YouTube-chrome-hiding
-  // overscale — they have no branding to crop. Scale 1 keeps the video
-  // pixel-perfect. Callers can still override via the `scale` prop.
-  const effectiveScale = direct ? 1 : scale;
+  // For direct MP4/WebM: the browser's native `object-fit: cover` (inside
+  // SmartVideo) already fills any viewport regardless of the source's aspect
+  // ratio (vertical 9:16, square, 21:9, …). We render the stage at 100% so
+  // nothing is pre-cropped — `cover` handles overflow symmetrically.
+  //
+  // For YouTube embeds we still need the 16:9-padded stage + overscale so
+  // the chrome/branding falls outside the viewport. react-player doesn't
+  // expose an `object-fit` equivalent for iframes.
+  const directStage = {
+    width:  '100%',
+    height: '100%',
+    transform: 'none',
+    inset:  '0',
+  };
+  const iframeStage = {
+    width:  'max(100vw, 177.78vh)',
+    height: 'max(100vh, 56.25vw)',
+    transform: `translate(-50%, -50%) scale(${scale})`,
+    transformOrigin: 'center center',
+  };
 
   return (
     <div
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 overflow-hidden bg-black ${className}`}
     >
-      {/* Inner stage — centred, sized with max(100vw, 177.78vh) /
-          max(100vh, 56.25vw) so a 16:9 video covers the viewport at every
-          aspect ratio (portrait, square, ultrawide). */}
       <div
-        className="absolute top-1/2 left-1/2"
-        style={{
-          width:  'max(100vw, 177.78vh)',
-          height: 'max(100vh, 56.25vw)',
-          transform: `translate(-50%, -50%) scale(${effectiveScale})`,
-          transformOrigin: 'center center',
-        }}
+        className={direct ? 'absolute inset-0' : 'absolute top-1/2 left-1/2'}
+        style={direct ? directStage : iframeStage}
       >
         <SmartVideo
           url={url}

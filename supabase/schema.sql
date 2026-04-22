@@ -147,12 +147,19 @@ create table if not exists public.assets (
   content_type  text,
   width         integer,
   height        integer,
+  folder        text,                              -- optional grouping shown in the Asset Picker
   meta          jsonb,
   created_at    timestamptz not null default now()
 );
 
+-- Forward-compat for existing deployments that pre-date the folder column.
+alter table public.assets
+  add column if not exists folder text;
+
 create index if not exists assets_created_idx
   on public.assets (created_at desc);
+create index if not exists assets_folder_idx
+  on public.assets (folder);
 
 alter table public.assets enable row level security;
 
