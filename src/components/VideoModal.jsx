@@ -24,13 +24,20 @@ export default function VideoModal({ project, onClose }) {
       {project && info && (
         <motion.div
           key="overlay"
-          initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-          animate={{ opacity: 1, backdropFilter: 'blur(20px)' }}
-          exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4 sm:p-8"
+          className="fixed z-[80] bg-black/90 flex items-center justify-center p-4 sm:p-8"
           onClick={onClose}
-          style={{ WebkitBackdropFilter: 'blur(20px)' }}
+          style={{
+            top: -1,
+            left: -1,
+            right: -1,
+            bottom: -1,
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
         >
           {/* header */}
           <div className="absolute top-0 inset-x-0 p-4 sm:p-6 flex items-start justify-between gap-6 text-white/80">
@@ -92,6 +99,11 @@ export default function VideoModal({ project, onClose }) {
             }}
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-6xl"
+            style={{
+              willChange: 'filter, transform, opacity',
+              transform: 'translateZ(0)',
+              isolation: 'isolate',
+            }}
           >
             <PlayerFrame info={info} title={project.title} />
             {info.kind === 'unknown' && (
@@ -135,7 +147,7 @@ function PlayerFrame({ info, title }) {
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
           scrolling="no"
-          className="w-full h-full border-0"
+          className="w-full h-full border-0 block rounded-xl"
         />
       </div>
     );
@@ -157,7 +169,7 @@ function PlayerFrame({ info, title }) {
         title={title}
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
-        className="w-full h-full border-0"
+        className="w-full h-full border-0 block rounded-xl"
       />
     </div>
   );

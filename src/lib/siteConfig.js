@@ -16,10 +16,11 @@
 
 export const DEFAULT_SITE_CONFIG = {
   layout: {
-    sidebarWidth:   280, // px, desktop fixed sidebar
-    gridColsMobile: 2,   // project grid columns below md breakpoint
-    gridCols:       3,   // project grid columns on md+ screens
-    cardGap:        20,  // px, gap between project cards
+    sidebarWidth:       280, // px, desktop fixed sidebar
+    gridColsMobile:     2,   // project grid columns below md breakpoint
+    gridCols:           3,   // project grid columns on md+ screens
+    cardGap:            20,  // px, gap between project cards
+    contentPaddingRight: 160, // px, right-side blank space on lg+ screens
   },
   typography: {
     topicSize: 56,      // px, big category title in GalleryHeader (applied
@@ -53,6 +54,7 @@ export function applySiteConfigToRoot(cfg) {
   r.setProperty('--site-grid-cols-mobile', String(cfg.layout.gridColsMobile));
   r.setProperty('--site-grid-cols',        String(cfg.layout.gridCols));
   r.setProperty('--site-card-gap',         `${cfg.layout.cardGap}px`);
+  r.setProperty('--site-content-pr',       `${cfg.layout.contentPaddingRight}px`);
   r.setProperty('--site-topic-size',    `${cfg.typography.topicSize}px`);
   r.setProperty('--site-body-size',     `${cfg.typography.bodySize}px`);
   r.setProperty('--site-intro-speed',   String(cfg.animations.introSpeed));

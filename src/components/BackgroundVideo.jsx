@@ -103,15 +103,20 @@ export default function BackgroundVideo({
   // For YouTube embeds we still need the 16:9-padded stage + overscale so
   // the chrome/branding falls outside the viewport. react-player doesn't
   // expose an `object-fit` equivalent for iframes.
+  // Use dynamic viewport units (dvh/dvw) so the stage keeps covering the
+  // viewport correctly as the mobile browser chrome hides/shows, and across
+  // orientation changes. Fallback chain: dvh → svh → vh.
   const directStage = {
-    width:  '100%',
-    height: '100%',
-    transform: 'none',
-    inset:  '0',
+    width:  'max(100vw, 100dvw)',
+    height: 'max(100vh, 100dvh)',
+    minWidth:  '100%',
+    minHeight: '100%',
+    transform: 'translate(-50%, -50%)',
+    transformOrigin: 'center center',
   };
   const iframeStage = {
-    width:  'max(100vw, 177.78vh)',
-    height: 'max(100vh, 56.25vw)',
+    width:  'max(100vw, 100dvw, 177.78vh, 177.78dvh)',
+    height: 'max(100vh, 100dvh, 56.25vw, 56.25dvw)',
     transform: `translate(-50%, -50%) scale(${scale})`,
     transformOrigin: 'center center',
   };
@@ -122,7 +127,7 @@ export default function BackgroundVideo({
       className={`pointer-events-none absolute inset-0 overflow-hidden bg-black ${className}`}
     >
       <div
-        className={direct ? 'absolute inset-0' : 'absolute top-1/2 left-1/2'}
+        className="absolute top-1/2 left-1/2"
         style={direct ? directStage : iframeStage}
       >
         <SmartVideo

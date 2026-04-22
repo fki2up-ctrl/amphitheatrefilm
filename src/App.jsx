@@ -5,6 +5,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
+import FloatingCategoryBar from './components/FloatingCategoryBar';
 import MobileTopBar from './components/MobileTopBar';
 import ProjectGrid from './components/ProjectGrid';
 import VideoModal from './components/VideoModal';
@@ -185,6 +186,7 @@ export default function App() {
           >
             <MobileTopBar />
             <MobileNav />
+            <FloatingCategoryBar />
             <Sidebar onOpenEditor={() => setEditorOpen(true)} />
 
             {/* Mobile-only edit FAB — desktop uses the Sidebar pencil. */}
@@ -214,7 +216,7 @@ export default function App() {
             </motion.button>
 
             <main className="relative z-10 lg:ml-[var(--site-sidebar-width,280px)]">
-              <div className="px-4 sm:px-8 lg:px-12 pt-[calc(var(--mobile-header-height,128px)+16px)] lg:pt-16 pb-28 lg:pb-24">
+              <div className="px-4 sm:px-8 lg:pl-12 lg:pr-[var(--site-content-pr,160px)] pt-[calc(var(--mobile-header-height,128px)+16px)] lg:pt-16 pb-28 lg:pb-24">
                 <GalleryHeader />
                 <ProjectGrid
                   onOpen={setOpenProject}

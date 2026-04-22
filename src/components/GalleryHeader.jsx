@@ -97,6 +97,7 @@ function PillNav({ pills, selectedCategory, openCategory }) {
 
   return (
     <motion.nav
+      id="gallery-pill-nav"
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: TITLE_EASE, delay: 0.55 }}
