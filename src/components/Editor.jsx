@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   X,
@@ -21,12 +21,10 @@ import {
   Cloud,
   CloudOff,
   Loader2,
-  UploadCloud,
 } from 'lucide-react';
 import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/content';
 import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
 import { supabase, hasSupabase } from '../lib/supabase';
-import { uploadImageToCloudinary } from '../lib/cloudinaryUpload';
 import TypographySection from './TypographySection';
 import ImageUploader from './ImageUploader';
 import VideoUploader from './VideoUploader';
@@ -147,40 +145,6 @@ export default function Editor({ open, onClose }) {
     onClose();
   };
 
-  // --- Desktop vs mobile layout ------------------------------------------
-  // Desktop (lg+): horizontal bottom panel with resizable height.
-  // Mobile: unchanged right-side drawer.
-  const isDesktop = useIsDesktop();
-  const [desktopHeight, setDesktopHeight] = useState(() => {
-    try {
-      const stored = parseInt(localStorage.getItem('editor:desktopHeight') || '', 10);
-      if (Number.isFinite(stored) && stored > 200) return stored;
-    } catch { /* ignore */ }
-    return Math.round(window.innerHeight * 0.8);
-  });
-  useEffect(() => {
-    try { localStorage.setItem('editor:desktopHeight', String(desktopHeight)); } catch { /* ignore */ }
-  }, [desktopHeight]);
-
-  // Drag-to-resize handler (desktop only). Clamps height between 25vh and 90vh.
-  const startResize = (e) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startH = desktopHeight;
-    const minH = Math.round(window.innerHeight * 0.25);
-    const maxH = Math.round(window.innerHeight * 0.9);
-    const onMove = (ev) => {
-      const dy = startY - ev.clientY;
-      setDesktopHeight(Math.max(minH, Math.min(maxH, startH + dy)));
-    };
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-  };
-
   return (
     <AnimatePresence>
       {open && (
@@ -197,28 +161,12 @@ export default function Editor({ open, onClose }) {
 
           {/* Drawer */}
           <motion.aside
-            initial={isDesktop ? { y: '100%' } : { x: '100%' }}
-            animate={isDesktop ? { y: 0 } : { x: 0 }}
-            exit={isDesktop ? { y: '100%' } : { x: '100%' }}
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 260, damping: 32 }}
-            className={
-              isDesktop
-                ? 'fixed left-0 right-0 bottom-0 z-[91] w-full bg-ink-950 border-t border-white/10 flex flex-col'
-                : 'fixed right-0 top-0 bottom-0 z-[91] w-full sm:w-[460px] bg-ink-950 border-l border-white/10 flex flex-col'
-            }
-            style={isDesktop ? { height: desktopHeight } : undefined}
+            className="fixed right-0 top-0 bottom-0 z-[91] w-full sm:w-[460px] bg-ink-950 border-l border-white/10 flex flex-col"
           >
-            {isDesktop && (
-              <div
-                role="separator"
-                aria-orientation="horizontal"
-                aria-label="Resize editor panel"
-                onPointerDown={startResize}
-                className="absolute -top-1 inset-x-0 h-2 cursor-ns-resize group"
-              >
-                <div className="mx-auto mt-1 h-1 w-16 rounded-full bg-white/15 group-hover:bg-white/40 transition-colors" />
-              </div>
-            )}
             {/* Header */}
             <header className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <div>
@@ -240,32 +188,28 @@ export default function Editor({ open, onClose }) {
 
             {unlocked ? (
               <>
-                {/* Body — vertical stack on mobile; master-detail layout on
-                    desktop (left menu picks a section, right pane shows it). */}
-                {isDesktop ? (
-                  <EditorMasterDetail c={c} />
-                ) : (
-                  <div className="flex-1 overflow-y-auto pretty-scroll px-5 py-5 space-y-8">
-                    <TypographySection />
-                    <SiteConfigSection c={c} />
-                    <AssetManagerSection />
-                    <ProfileSection c={c} />
-                    <LandingVideoSection c={c} />
-                    <ContactSection c={c} />
-                    <BackgroundSection c={c} />
-                    <TopicsSection c={c} />
-                    <p className="pt-4 text-[11px] text-white/40 leading-relaxed">
-                      Edits preview live and persist in your browser. Click{' '}
-                      <span className="text-white/70">Save</span> to write them
-                      directly to{' '}
-                      <code className="text-white/60">src/data/projects.js</code>
-                      {' '}— no copy-paste needed.{' '}
-                      <span className="text-white/70">Export</span> is only for
-                      when you need the raw source (e.g. to paste on a machine
-                      without the dev server).
-                    </p>
-                  </div>
-                )}
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto pretty-scroll px-5 py-5 space-y-8">
+                  <TypographySection />
+                  <SiteConfigSection c={c} />
+                  <AssetManagerSection />
+                  <ProfileSection c={c} />
+                  <LandingVideoSection c={c} />
+                  <ContactSection c={c} />
+                  <BackgroundSection c={c} />
+                  <TopicsSection c={c} />
+
+                  <p className="pt-4 text-[11px] text-white/40 leading-relaxed">
+                    Edits preview live and persist in your browser. Click{' '}
+                    <span className="text-white/70">Save</span> to write them
+                    directly to{' '}
+                    <code className="text-white/60">src/data/projects.js</code>
+                    {' '}— no copy-paste needed.{' '}
+                    <span className="text-white/70">Export</span> is only for
+                    when you need the raw source (e.g. to paste on a machine
+                    without the dev server).
+                  </p>
+                </div>
 
                 {/* Supabase cloud-sync banner — always visible so you can
                     tell at a glance whether cloud sync is wired up. When the
@@ -526,99 +470,6 @@ function SiteConfigSection({ c }) {
   );
 }
 
-// Small helper: wraps an image preview as a click-to-upload button. Used in
-// Profile (photo, favicon) so we can remove the large drag-drop dropzone and
-// let the existing thumbnail double as the upload trigger.
-function ClickUploadThumb({ value, onChange, aspect, className, objectPosition, fit = 'cover', placeholderIcon }) {
-  const fileRef = useRef(null);
-  const [status, setStatus] = useState('idle'); // idle | uploading | done | error
-  const [progress, setProgress] = useState(0);
-
-  const handleFiles = async (files) => {
-    const file = files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-    setStatus('uploading');
-    setProgress(0);
-    try {
-      const { url, publicId, bytes, width, height, format } =
-        await uploadImageToCloudinary(file, (p) => setProgress(p));
-      onChange?.(url);
-      if (hasSupabase) {
-        try {
-          await supabase.from('assets').insert({
-            kind: 'image',
-            url,
-            filename: file.name,
-            size_bytes: bytes,
-            content_type: file.type,
-            width,
-            height,
-            meta: { format, publicId },
-          });
-        } catch { /* ignore log failure */ }
-      }
-      setStatus('done');
-      setTimeout(() => setStatus('idle'), 1500);
-    } catch {
-      setStatus('error');
-      setTimeout(() => setStatus('idle'), 2000);
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={() => fileRef.current?.click()}
-      title={value ? 'Click to replace image' : 'Click to upload image'}
-      className={`relative group rounded-lg overflow-hidden bg-ink-800 ring-1 ring-white/10 hover:ring-white/30 transition ${className || ''}`}
-      style={aspect ? { aspectRatio: aspect } : undefined}
-    >
-      {value ? (
-        <img
-          src={previewSrc(value, 400)}
-          alt=""
-          className={`w-full h-full ${fit === 'contain' ? 'object-contain' : 'object-cover'}`}
-          style={objectPosition ? { objectPosition } : undefined}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-white/25">
-          {placeholderIcon ?? <UploadCloud className="w-5 h-5" />}
-        </div>
-      )}
-      <div
-        className={`absolute inset-0 flex flex-col items-center justify-center gap-1 bg-ink-950/70 backdrop-blur-[2px] transition-opacity ${
-          status !== 'idle' || !value ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        }`}
-      >
-        {status === 'uploading' ? (
-          <>
-            <Loader2 className="w-4 h-4 text-white animate-spin" />
-            <span className="text-[10px] text-white/75">{progress}%</span>
-          </>
-        ) : status === 'done' ? (
-          <Check className="w-4 h-4 text-emerald-300" />
-        ) : status === 'error' ? (
-          <AlertCircle className="w-4 h-4 text-red-300" />
-        ) : (
-          <>
-            <UploadCloud className="w-4 h-4 text-white/80" />
-            <span className="text-[10px] text-white/70 px-1 text-center leading-tight">
-              {value ? 'Replace' : 'Upload'}
-            </span>
-          </>
-        )}
-      </div>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
-      />
-    </button>
-  );
-}
-
 function ProfileSection({ c }) {
   const { PROFILE, setProfile } = c;
 
@@ -634,14 +485,20 @@ function ProfileSection({ c }) {
   return (
     <Section title="Profile" hint="Your photo, name, role, and tagline.">
       <div className="flex items-start gap-4">
-        {/* Click-to-upload 4:5 thumbnail — doubles as preview + upload trigger */}
-        <ClickUploadThumb
-          value={PROFILE.photo}
-          onChange={(url) => setProfile({ photo: url })}
-          aspect="4 / 5"
-          className="w-24 shrink-0"
-          objectPosition={`${cropX}% ${cropY}%`}
-        />
+        {/* Larger 4:5 preview — crop edits reflect live */}
+        <div
+          className="w-24 shrink-0 rounded-lg overflow-hidden bg-ink-800 ring-1 ring-white/10"
+          style={{ aspectRatio: '4 / 5' }}
+        >
+          {PROFILE.photo ? (
+            <img
+              src={previewSrc(PROFILE.photo, 240)}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{ objectPosition: `${cropX}% ${cropY}%` }}
+            />
+          ) : null}
+        </div>
         <div className="flex-1 space-y-2">
           <Field
             label="Photo URL"
@@ -649,6 +506,12 @@ function ProfileSection({ c }) {
             onChange={(v) => setProfile({ photo: v })}
             placeholder="https://…"
             hint={isCloudinaryUrl(PROFILE.photo) ? 'Cloudinary — auto-optimized (f_auto, q_auto, w_200+).' : undefined}
+          />
+          <ImageUploader
+            value={PROFILE.photo}
+            onChange={(url) => setProfile({ photo: url })}
+            compact
+            aspect="4 / 5"
           />
         </div>
       </div>
@@ -785,20 +648,29 @@ function ProfileSection({ c }) {
           hint="Updates the <meta name=&quot;description&quot;> tag live."
         />
         <div className="flex items-center gap-3">
-          <ClickUploadThumb
-            value={PROFILE.favicon}
-            onChange={(url) => setProfile({ favicon: url })}
-            aspect="1 / 1"
-            className="w-10 h-10 shrink-0"
-            fit="contain"
-          />
-          <div className="flex-1">
+          <div className="w-10 h-10 shrink-0 rounded-md overflow-hidden bg-ink-800 ring-1 ring-white/10 flex items-center justify-center">
+            {PROFILE.favicon ? (
+              <img
+                src={previewSrc(PROFILE.favicon, 64)}
+                alt="favicon preview"
+                className="w-7 h-7 object-contain"
+                onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
+              />
+            ) : null}
+          </div>
+          <div className="flex-1 space-y-2">
             <Field
               label="Logo / favicon URL"
               value={PROFILE.favicon || ''}
               onChange={(v) => setProfile({ favicon: v })}
               placeholder="/favicon.svg  or  https://…"
               compact
+            />
+            <ImageUploader
+              value={PROFILE.favicon}
+              onChange={(url) => setProfile({ favicon: url })}
+              compact
+              aspect="1 / 1"
             />
           </div>
         </div>
@@ -1330,141 +1202,31 @@ function ExportModal({ open, onClose, source }) {
 // UI primitives
 // ---------------------------------------------------------------------------
 
-// Reactive media-query hook — `true` when viewport is lg+ (>=1024px).
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia
-      ? window.matchMedia('(min-width: 1024px)').matches
-      : false
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(min-width: 1024px)');
-    const onChange = (e) => setIsDesktop(e.matches);
-    mq.addEventListener?.('change', onChange);
-    return () => mq.removeEventListener?.('change', onChange);
-  }, []);
-  return isDesktop;
-}
-
-// Desktop master-detail layout: vertical menu on the left, selected
-// section's content on the right. Selection persists across opens so
-// the editor reopens on the last-used section.
-function EditorMasterDetail({ c }) {
-  const SECTIONS = [
-    { id: 'typography', label: 'Typography',      render: () => <TypographySection /> },
-    { id: 'layout',     label: 'Layout & motion', render: () => <SiteConfigSection c={c} /> },
-    { id: 'assets',     label: 'Asset library',   render: () => <AssetManagerSection /> },
-    { id: 'profile',    label: 'Profile',         render: () => <ProfileSection c={c} /> },
-    { id: 'landing',    label: 'Landing video',   render: () => <LandingVideoSection c={c} /> },
-    { id: 'contact',    label: 'Contact',         render: () => <ContactSection c={c} /> },
-    { id: 'background', label: 'Background',      render: () => <BackgroundSection c={c} /> },
-    { id: 'topics',     label: 'Topics & projects', render: () => <TopicsSection c={c} /> },
-  ];
-
-  const [active, setActive] = useState(() => {
-    try {
-      const stored = localStorage.getItem('editor:activeSection');
-      if (stored && SECTIONS.some((s) => s.id === stored)) return stored;
-    } catch { /* ignore */ }
-    return SECTIONS[0].id;
-  });
-  useEffect(() => {
-    try { localStorage.setItem('editor:activeSection', active); } catch { /* ignore */ }
-  }, [active]);
-
-  const current = SECTIONS.find((s) => s.id === active) ?? SECTIONS[0];
-
-  return (
-    <div className="flex-1 min-h-0 flex flex-row">
-      {/* Left menu */}
-      <nav className="shrink-0 w-52 border-r border-white/10 overflow-y-auto pretty-scroll py-3">
-        <ul className="space-y-0.5 px-2">
-          {SECTIONS.map((s) => {
-            const isActive = s.id === active;
-            return (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => setActive(s.id)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`w-full text-left px-3 py-2 rounded-md text-[12px] tracking-wide transition-colors ${
-                    isActive
-                      ? 'bg-white/10 text-white'
-                      : 'text-white/55 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Right detail pane — force every Section open so there's no extra
-          click to expand; clicking a left menu item reveals the section in
-          full immediately. */}
-      <div className="flex-1 overflow-y-auto pretty-scroll px-6 py-5 space-y-6">
-        <SectionOpenContext.Provider value={true}>
-          {current.render()}
-        </SectionOpenContext.Provider>
-      </div>
-    </div>
-  );
-}
-
-// Context flag: when `true`, every <Section> inside renders always-open
-// (no collapse toggle). Used by the desktop master-detail pane so clicking
-// a left-menu entry reveals its content instantly. Exported so external
-// section components (TypographySection, AssetManagerSection, …) can
-// respect the same context and skip their own internal collapse wrappers.
-export const SectionOpenContext = createContext(false);
-
 function Section({ title, hint, action, children, defaultOpen = false }) {
-  const forceOpen = useContext(SectionOpenContext);
-  const [openState, setOpen] = useState(defaultOpen);
-  const open = forceOpen || openState;
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        {forceOpen ? (
-          <div className="flex-1 flex items-start gap-2 text-left">
-            <div>
-              <h3 className="text-[11px] tracking-widest2 uppercase text-white/55">
-                {title}
-              </h3>
-              {hint && (
-                <p className="mt-1 text-[11px] text-white/40">{hint}</p>
-              )}
-            </div>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex-1 flex items-start gap-2 text-left group"
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 mt-0.5 text-white/40 group-hover:text-white/75 transition-all duration-200 ${open ? '' : '-rotate-90'}`}
+          />
+          <div>
+            <h3 className="text-[11px] tracking-widest2 uppercase text-white/55 group-hover:text-white/85 transition-colors">
+              {title}
+            </h3>
+            {hint && open && (
+              <p className="mt-1 text-[11px] text-white/40">{hint}</p>
+            )}
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            className="flex-1 flex items-start gap-2 text-left group"
-          >
-            <ChevronDown
-              className={`w-3.5 h-3.5 mt-0.5 text-white/40 group-hover:text-white/75 transition-all duration-200 ${open ? '' : '-rotate-90'}`}
-            />
-            <div>
-              <h3 className="text-[11px] tracking-widest2 uppercase text-white/55 group-hover:text-white/85 transition-colors">
-                {title}
-              </h3>
-              {hint && open && (
-                <p className="mt-1 text-[11px] text-white/40">{hint}</p>
-              )}
-            </div>
-          </button>
-        )}
+        </button>
         {open && action}
       </div>
-      {open && (
-        <div className={forceOpen ? 'space-y-3 max-w-3xl' : 'space-y-3'}>
-          {children}
-        </div>
-      )}
+      {open && <div className="space-y-3">{children}</div>}
     </section>
   );
 }

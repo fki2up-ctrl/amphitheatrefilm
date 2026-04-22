@@ -14,34 +14,16 @@
 // The library grid itself accepts drag-and-drop to upload new files.
 // ---------------------------------------------------------------------------
 
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Copy, Check, Trash2, Loader2, UploadCloud, ImageIcon, Film, RefreshCw } from 'lucide-react';
 import { supabase, hasSupabase } from '../lib/supabase';
 import { uploadImageToCloudinary, hasCloudinary } from '../lib/cloudinaryUpload';
 import { uploadVideoToB2 } from '../lib/b2Upload';
 import SmartVideo from './SmartVideo';
-import { SectionOpenContext } from './Editor';
 
-// Mobile-only collapse wrapper. When embedded in the desktop master-detail
-// pane (SectionOpenContext === true), renders children directly — the
-// Editor's left menu already labels this section.
 function Section({ title, hint, action, children }) {
-  const forceOpen = useContext(SectionOpenContext);
-  const [openState, setOpen] = useState(false);
-  const open = forceOpen || openState;
-
-  if (forceOpen) {
-    return (
-      <section className="space-y-3">
-        <div className="flex items-center justify-end gap-2">
-          {action}
-        </div>
-        {hint && <p className="text-[11px] text-white/40">{hint}</p>}
-        <div className="space-y-3">{children}</div>
-      </section>
-    );
-  }
-
+  // Inline copy of the Editor's Section primitive so this file stays standalone.
+  const [open, setOpen] = useState(false);
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">

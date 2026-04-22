@@ -11,10 +11,9 @@
 //   • "Save" commits the current settings to Supabase's site_settings row.
 // ---------------------------------------------------------------------------
 
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Type, Cloud, CloudOff, Check, AlertCircle, Loader2, ChevronDown } from 'lucide-react';
 import { useContent } from '../store/content';
-import { SectionOpenContext } from './Editor';
 import {
   FONT_CATALOG,
   FONT_CATEGORY_LABELS,
@@ -84,16 +83,10 @@ function storeStr(key, value) {
 export default function TypographySection() {
   const { fontSettings, setFontSettings, saveFontSettings, hasSupabase } = useContent();
 
-  // When rendered inside the desktop master-detail pane, the outer Editor
-  // already labels this section — so skip the internal category collapse
-  // and always show the role cards directly.
-  const forceOpen = useContext(SectionOpenContext);
-
   // Panel open/closed state (the "category" collapse) — default closed so
   // the editor isn't visually busy on open. Persisted across reloads.
-  const [panelOpenState, setPanelOpen] = useState(() => loadBool(PANEL_OPEN_KEY, false));
-  useEffect(() => { storeBool(PANEL_OPEN_KEY, panelOpenState); }, [panelOpenState]);
-  const panelOpen = forceOpen || panelOpenState;
+  const [panelOpen, setPanelOpen] = useState(() => loadBool(PANEL_OPEN_KEY, false));
+  useEffect(() => { storeBool(PANEL_OPEN_KEY, panelOpen); }, [panelOpen]);
 
   // Which role card is currently expanded inside the panel. Only one open
   // at a time so the UI stays compact. Empty string = all collapsed.
@@ -159,61 +152,48 @@ export default function TypographySection() {
   }, []);
 
   return (
-    <section className={forceOpen ? '' : 'rounded-lg border border-white/10 bg-white/[0.02]'}>
-      {/* Category header — hidden when embedded in the desktop master-detail
-          pane (the Editor left menu already labels this section). */}
-      {!forceOpen && (
-        <div className="flex items-center gap-2 p-2.5">
-          <button
-            type="button"
-            onClick={() => setPanelOpen((o) => !o)}
-            className="flex-1 flex items-center gap-2 text-left px-2 py-1 text-white/85 hover:text-white"
-            aria-expanded={panelOpen}
-          >
-            <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform ${panelOpen ? '' : '-rotate-90'}`}
-            />
-            <Type className="w-3.5 h-3.5 text-white/60" />
-            <span className="text-[11px] tracking-widest2 uppercase text-white/70">
-              Typography
-            </span>
-            {isDirty && (
-              <span
-                className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-amber-300"
-                title="Unsaved font changes"
-              />
-            )}
-            <span className="ml-2 text-[10px] text-white/35 hidden sm:inline">
-              · {ROLES.length} roles
-            </span>
-          </button>
-
-          {panelOpen && (
-            <SaveButton
-              onClick={handleSave}
-              status={saveStatus}
-              isDirty={isDirty}
-              hasSupabase={hasSupabase}
+    <section className="rounded-lg border border-white/10 bg-white/[0.02]">
+      {/* Category header — always clickable; chevron rotates when open. */}
+      <div className="flex items-center gap-2 p-2.5">
+        <button
+          type="button"
+          onClick={() => setPanelOpen((o) => !o)}
+          className="flex-1 flex items-center gap-2 text-left px-2 py-1 text-white/85 hover:text-white"
+          aria-expanded={panelOpen}
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform ${panelOpen ? '' : '-rotate-90'}`}
+          />
+          <Type className="w-3.5 h-3.5 text-white/60" />
+          <span className="text-[11px] tracking-widest2 uppercase text-white/70">
+            Typography
+          </span>
+          {isDirty && (
+            <span
+              className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-amber-300"
+              title="Unsaved font changes"
             />
           )}
-        </div>
-      )}
+          <span className="ml-2 text-[10px] text-white/35 hidden sm:inline">
+            · {ROLES.length} roles
+          </span>
+        </button>
+
+        {panelOpen && (
+          <SaveButton
+            onClick={handleSave}
+            status={saveStatus}
+            isDirty={isDirty}
+            hasSupabase={hasSupabase}
+          />
+        )}
+      </div>
 
       {panelOpen && (
-        <div className={forceOpen ? 'space-y-3' : 'px-3 pb-3 pt-1 space-y-3 border-t border-white/5'}>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] text-white/40">
-              Pick fonts for each role — changes apply live across the whole site.
-            </p>
-            {forceOpen && (
-              <SaveButton
-                onClick={handleSave}
-                status={saveStatus}
-                isDirty={isDirty}
-                hasSupabase={hasSupabase}
-              />
-            )}
-          </div>
+        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-white/5">
+          <p className="text-[11px] text-white/40 pt-1">
+            Pick fonts for each role — changes apply live across the whole site.
+          </p>
 
           {saveStatus === 'error' && saveError && (
             <div className="flex items-start gap-2 rounded-md border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-[11px] text-rose-200/90">
