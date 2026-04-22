@@ -26,6 +26,9 @@ import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/cont
 import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
 import { supabase, hasSupabase } from '../lib/supabase';
 import TypographySection from './TypographySection';
+import ImageUploader from './ImageUploader';
+import VideoUploader from './VideoUploader';
+import AssetManagerSection from './AssetManagerSection';
 
 // Preview thumbnails in the editor sidebar are small; 400 px is ample even
 // at 2× DPR. `previewSrc` returns the optimized Cloudinary URL when possible,
@@ -189,6 +192,7 @@ export default function Editor({ open, onClose }) {
                 <div className="flex-1 overflow-y-auto pretty-scroll px-5 py-5 space-y-8">
                   <TypographySection />
                   <SiteConfigSection c={c} />
+                  <AssetManagerSection />
                   <ProfileSection c={c} />
                   <LandingVideoSection c={c} />
                   <ContactSection c={c} />
@@ -487,13 +491,19 @@ function ProfileSection({ c }) {
             />
           ) : null}
         </div>
-        <div className="flex-1">
+        <div className="flex-1 space-y-2">
           <Field
             label="Photo URL"
             value={PROFILE.photo}
             onChange={(v) => setProfile({ photo: v })}
             placeholder="https://…"
             hint={isCloudinaryUrl(PROFILE.photo) ? 'Cloudinary — auto-optimized (f_auto, q_auto, w_200+).' : undefined}
+          />
+          <ImageUploader
+            value={PROFILE.photo}
+            onChange={(url) => setProfile({ photo: url })}
+            compact
+            aspect="4 / 5"
           />
         </div>
       </div>
@@ -640,13 +650,19 @@ function ProfileSection({ c }) {
               />
             ) : null}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 space-y-2">
             <Field
               label="Logo / favicon URL"
               value={PROFILE.favicon || ''}
               onChange={(v) => setProfile({ favicon: v })}
               placeholder="/favicon.svg  or  https://…"
               compact
+            />
+            <ImageUploader
+              value={PROFILE.favicon}
+              onChange={(url) => setProfile({ favicon: url })}
+              compact
+              aspect="1 / 1"
             />
           </div>
         </div>
@@ -663,6 +679,11 @@ function LandingVideoSection({ c }) {
       title="Landing background video"
       hint="Plays full-screen behind the landing menu. Supports YouTube, Vimeo, or direct MP4 / WebM URLs."
     >
+      <VideoUploader
+        value={PROFILE.landingVideo || ''}
+        onChange={(url) => setProfile({ landingVideo: url })}
+        label="Upload or drop a video"
+      />
       <Field
         label="Video URL"
         value={PROFILE.landingVideo || ''}
@@ -1075,6 +1096,12 @@ function ProjectRow({
             onChange={(v) => updateProject(ti, pi, { image: v })}
             compact
             hint={isCloudinaryUrl(p.image) ? 'Cloudinary — auto-optimized.' : undefined}
+          />
+          <ImageUploader
+            value={p.image}
+            onChange={(url) => updateProject(ti, pi, { image: url })}
+            compact
+            aspect="1.43 / 1"
           />
           <CropPicker
             src={previewSrc(p.image || guessPreviewUrl(p.url), 600)}

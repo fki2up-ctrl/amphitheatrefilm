@@ -131,8 +131,44 @@ insert into public.site_settings (id)
   values ('00000000-0000-0000-0000-000000000001')
   on conflict (id) do nothing;
 
+-- ---------------------------------------------------------------------------
+-- assets — library of uploaded media (Cloudinary images + B2 videos) shown
+-- in the Editor's "Asset library" section. Uploads insert a row here; the
+-- UI lists the most recent rows so the editor can copy URLs at any time.
+-- Deleting a row removes only the DB entry (the underlying file stays in
+-- Cloudinary / B2) — this keeps existing references on pages safe.
+-- ---------------------------------------------------------------------------
+create table if not exists public.assets (
+  id            uuid primary key default uuid_generate_v4(),
+  kind          text not null check (kind in ('image','video')),
+  url           text not null,
+  filename      text,
+  size_bytes    bigint,
+  content_type  text,
+  width         integer,
+  height        integer,
+  meta          jsonb,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists assets_created_idx
+  on public.assets (created_at desc);
+
+alter table public.assets enable row level security;
+
+drop policy if exists "public read assets"  on public.assets;
+drop policy if exists "anon write assets"   on public.assets;
+
+create policy "public read assets"
+  on public.assets for select using (true);
+
+-- Anon write — tighten later when you move all writes behind authenticated
+-- users. Currently matches the permissiveness of `projects` / `topics`.
+create policy "anon write assets"
+  on public.assets for all using (true) with check (true);
+
 -- =============================================================================
--- Done. Verify in the Table Editor: you should see `topics`, `projects`, and
--- `site_settings` tables. `site_settings` will have exactly one seeded row;
--- the other two start empty and get populated on first editor save.
+-- Done. Verify in the Table Editor: you should see `topics`, `projects`,
+-- `site_settings`, and `assets` tables. `site_settings` will have exactly one
+-- seeded row; the others start empty and get populated on first upload/save.
 -- =============================================================================
