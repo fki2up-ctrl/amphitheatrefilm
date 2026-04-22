@@ -96,40 +96,39 @@ export default function AssetManagerSection() {
     try {
       let row;
       if (isImage) {
-        const r = await uploadImageToCloudinary(file, (p) =>
-          setUploading((u) => u && { ...u, progress: p }),
+        const { url, publicId, bytes, width, height, format } = await uploadImageToCloudinary(
+          file,
+          (p) => setUploading((u) => u && { ...u, progress: p }),
         );
         row = {
           kind:         'image',
-          url:          r.url,
+          url,
           filename:     file.name,
-          size_bytes:   r.bytes,
+          size_bytes:   bytes,
           content_type: file.type,
-          width:        r.width,
-          height:       r.height,
-          meta:         { format: r.format, publicId: r.publicId },
+          width,
+          height,
+          meta:         { format, publicId },
         };
       } else {
-        const r = await uploadVideoToB2(file, (p) =>
-          setUploading((u) => u && { ...u, progress: p }),
+        const { url, filePath, bytes, contentType } = await uploadVideoToB2(
+          file,
+          (p) => setUploading((u) => u && { ...u, progress: p }),
         );
         row = {
           kind:         'video',
-          url:          r.url,
+          url,
           filename:     file.name,
-          size_bytes:   r.bytes,
-          content_type: r.contentType,
-          meta:         { filePath: r.filePath },
+          size_bytes:   bytes,
+          content_type: contentType,
+          meta:         { filePath },
         };
       }
-      // Log the row so it appears in the library grid and future pickers.
-      try {
+      // Log to the `assets` table so the row shows up in the library grid
+      // and can later be deleted by the delete-asset Edge Function.
+      if (hasSupabase) {
         const { error: insErr } = await supabase.from('assets').insert(row);
         if (insErr) throw insErr;
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('[AssetManager] assets insert failed:', e?.message || e);
-        setUploadErr(`Uploaded, but library log failed: ${e?.message || e}`);
       }
       setUploading(null);
       await refresh();
