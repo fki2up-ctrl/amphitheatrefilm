@@ -10,12 +10,12 @@
 /* ── 1. PROFILE ──────────────────────────────────────────────────────────── */
 
 export const PROFILE = {
-  photo:               "https://res.cloudinary.com/dhva8jxvn/image/upload/v1776599292/%E0%B8%9F%E0%B8%B4%E0%B8%A5%E0%B9%8C%E0%B8%A1_%E0%B9%82%E0%B8%9B%E0%B8%A3%E0%B9%84%E0%B8%9F%E0%B8%A5%E0%B9%8C_yw9wqb.jpg",
+  photo:               "/profile.jpg",
   photoPosition:       "50% 50%",
-  mobilePhotoHeight:   180,
+  mobilePhotoHeight:   112,
   name:                "Film Natthawut",
   role:                "Director / Cinematographer",
-  tagline:             "I'm wishing to be a light painter",
+  tagline:             "I wish to be a light painter",
   taglineEmphasis:     "light painter",
   introTagline:        "I wish to be a light painter",
   introTaglineScale:   1,
@@ -26,8 +26,8 @@ export const PROFILE = {
   allLabel:            "All",
   siteTitle:           "Film Natthawut - Portfolio",
   siteDescription:     "",
-  favicon:             "/favicon.svg",
-  landingVideo:        "https://video.amphitheatrefilm.com/1776880775118-amphitheatrefilm-Showreel-2024.mp4",
+  favicon:             "/icons/favicon-32.png",
+  landingVideo:        "",
   featuredVideo:       "",
   featuredVideoTitle:  "",
   featuredVideoPoster: "",
@@ -118,6 +118,7 @@ export const TOPICS = [
       title:    "Fly To The Moon Festival 23/24",
       subtitle: "Aftermovie",
       url:      "https://www.youtube.com/watch?v=9smuS4nlZj4",
+      imagePosition: "50% 54%",
     }),
     project({
       title:    "Fly To The Moon Festival 2021",
