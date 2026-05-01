@@ -29,6 +29,8 @@ import TypographySection from './TypographySection';
 import ImageUploader from './ImageUploader';
 import VideoUploader from './VideoUploader';
 import AssetManagerSection from './AssetManagerSection';
+import TheatreAlpha from './TheatreAlpha';
+import { Clapperboard } from 'lucide-react';
 
 // Preview thumbnails in the editor sidebar are small; 400 px is ample even
 // at 2× DPR. `previewSrc` returns the optimized Cloudinary URL when possible,
@@ -61,6 +63,10 @@ export default function Editor({ open, onClose }) {
   // the session is populated.
   const [session, setSession] = useState(null);
   const [authLoaded, setAuthLoaded] = useState(!hasSupabase);
+
+  // Top-level Editor view: 'content' (existing site editor) or 'theatre'
+  // (Theatre Alpha studio module). Theatre Alpha widens the drawer.
+  const [view, setView] = useState('content');
 
   useEffect(() => {
     if (!hasSupabase) return;
@@ -165,7 +171,12 @@ export default function Editor({ open, onClose }) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 260, damping: 32 }}
-            className="fixed right-0 top-0 bottom-0 z-[91] w-full sm:w-[460px] bg-ink-950 border-l border-white/10 flex flex-col"
+            className={[
+              'fixed right-0 top-0 bottom-0 z-[91] bg-ink-950 border-l border-white/10 flex flex-col transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+              view === 'theatre'
+                ? 'w-screen'
+                : 'w-full sm:w-[460px]',
+            ].join(' ')}
           >
             {/* Header */}
             <header className="flex items-center justify-between px-5 py-4 border-b border-white/10">
@@ -188,6 +199,14 @@ export default function Editor({ open, onClose }) {
 
             {unlocked ? (
               <>
+                <EditorTabs view={view} onChange={setView} />
+
+                {view === 'theatre' ? (
+                  <div className="flex-1 min-h-0 overflow-hidden px-5 py-5">
+                    <TheatreAlpha />
+                  </div>
+                ) : (
+                <>
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto pretty-scroll px-5 py-5 space-y-8">
                   <TypographySection />
@@ -210,7 +229,10 @@ export default function Editor({ open, onClose }) {
                     without the dev server).
                   </p>
                 </div>
+                </>
+                )}
 
+                {view === 'content' && (<>
                 {/* Supabase cloud-sync banner — always visible so you can
                     tell at a glance whether cloud sync is wired up. When the
                     env vars are missing (common on first Vercel deploy) it
@@ -311,6 +333,7 @@ export default function Editor({ open, onClose }) {
                     )}
                   </div>
                 )}
+                </>)}
               </>
             ) : (
               <MagicLinkGate authLoaded={authLoaded} />
@@ -1201,6 +1224,52 @@ function ExportModal({ open, onClose, source }) {
 // ---------------------------------------------------------------------------
 // UI primitives
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// EditorTabs — top-of-drawer tab switcher between the existing site editor
+// ("Content") and the Theatre Alpha studio module. Theatre Alpha gets a
+// subtle cinematic glow so it visually invites discovery.
+// ---------------------------------------------------------------------------
+function EditorTabs({ view, onChange }) {
+  const Tab = ({ id, children, glow }) => {
+    const active = view === id;
+    return (
+      <button
+        type="button"
+        onClick={() => onChange(id)}
+        className={[
+          'relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] tracking-widest2 uppercase transition-colors',
+          active
+            ? 'bg-white/10 border-white/30 text-white'
+            : 'border-white/10 text-white/55 hover:text-white hover:border-white/30',
+          glow ? 'ta-tab-glow' : '',
+        ].join(' ')}
+      >
+        {children}
+      </button>
+    );
+  };
+  return (
+    <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10">
+      <Tab id="content">Content</Tab>
+      <Tab id="theatre" glow>
+        <Clapperboard className="w-3.5 h-3.5" />
+        Theatre Alpha
+      </Tab>
+      <style>{`
+        @keyframes ta-pulse-glow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.0), 0 0 0 0 rgba(245,158,11,0.0); border-color: rgba(245,158,11,0.55); }
+          50%      { box-shadow: 0 0 14px 2px rgba(245,158,11,0.45), 0 0 28px 4px rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.95); }
+        }
+        .ta-tab-glow {
+          animation: ta-pulse-glow 2.4s ease-in-out infinite;
+          color: rgba(245,158,11,0.95);
+        }
+        .ta-tab-glow:hover { color: #fff; }
+      `}</style>
+    </div>
+  );
+}
 
 function Section({ title, hint, action, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
