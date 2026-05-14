@@ -88,7 +88,7 @@ export const TOPICS = [
     }),
     project({
       title:    "Bvlgari",
-      url:      "https://video.amphitheatrefilm.com/1778741426023-D4_4K_FF_260426.mov",
+      url:      "https://video.amphitheatrefilm.com/1778745743723-D4_4K_FF_260426.mp4",
     }),
   ]),
 
