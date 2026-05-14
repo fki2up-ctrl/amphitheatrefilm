@@ -249,6 +249,8 @@ function MetadataPanel({ project }) {
 function PlayerFrame({ info, title, hasPanel }) {
   // Direct video files (Backblaze B2, raw .mp4/.webm) — CinematicPlayer
   // so the native controls are replaced by our custom closed-UI bar.
+  // No hardcoded aspect ratio — the component reads the video's intrinsic
+  // dimensions on loadedmetadata and adapts automatically.
   if (info.kind === 'direct') {
     return (
       <CinematicPlayer
@@ -256,10 +258,6 @@ function PlayerFrame({ info, title, hasPanel }) {
         className={[
           hasPanel ? '' : 'mx-auto rounded-xl shadow-2xl ring-1 ring-white/10',
         ].join(' ')}
-        style={{
-          aspectRatio: '16 / 9',
-          width: hasPanel ? '100%' : 'min(100%, calc(85vh * 16 / 9))',
-        }}
       />
     );
   }

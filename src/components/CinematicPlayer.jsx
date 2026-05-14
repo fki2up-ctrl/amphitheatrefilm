@@ -1,50 +1,64 @@
 // ---------------------------------------------------------------------------
-// CinematicPlayer — fully custom, closed-UI video player.
+// CinematicPlayer — custom closed-UI video player with dynamic aspect ratio.
 //
-// Rules (strictly enforced):
-//   1. NO dark overlay / dim / gradient mask ever touches the video.
-//   2. NO external links, logos, or share buttons anywhere.
-//   3. Native browser controls are disabled; only our controls render.
+// Sizing contract:
+//   • Reads the video's intrinsic videoWidth / videoHeight from `loadedmetadata`.
+//   • Landscape (ratio ≥ 1): fills container width → height follows naturally.
+//   • Portrait  (ratio < 1): height-capped at 85 vh, width follows → centred.
+//   • Before metadata: renders in landscape mode as a safe default.
 //
-// Controls bar (auto-hides after 2.5 s of inactivity):
-//   [Play/Pause] [──── scrubber ────] [time] [volume] [fullscreen]
+// Zero-Tint rule:
+//   NO overlay, dim, or gradient ever touches the video element itself.
+//   The only background-gradient is the narrow bar (≈56 px) behind the
+//   control icons — it sits below the last video pixel.
 //
-// Scrubber: h-[3px], expands to h-[6px] on hover.
-// Controls fade in/out with Framer Motion (no opacity on the video itself).
-// Clicking the video body toggles Play/Pause.
+// Closed-UI rule:
+//   No external links, platform logos, or share buttons anywhere.
+//
+// Auto-hide:
+//   Controls fade out 2.5 s after the last mouse movement and re-appear
+//   instantly on any mouse activity.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Play, Pause,
-  Volume2, VolumeX,
   Maximize, Minimize,
+  Pause, Play,
+  Volume2, VolumeX,
 } from 'lucide-react';
 
-// Format seconds → "M:SS"
+// "M:SS" formatter
 function fmt(s) {
   if (!Number.isFinite(s) || s < 0) return '0:00';
-  const m = Math.floor(s / 60);
+  const m  = Math.floor(s / 60);
   const ss = String(Math.floor(s % 60)).padStart(2, '0');
   return `${m}:${ss}`;
 }
 
-export default function CinematicPlayer({ src, poster, className = '', style }) {
-  const videoRef    = useRef(null);
-  const containerRef = useRef(null);
-  const hideTimer   = useRef(null);
+export default function CinematicPlayer({
+  src,
+  poster,
+  className = '',
+  style,
+}) {
+  const videoRef     = useRef(null);
+  const containerRef = useRef(null); // inner wrapper — sized to video
+  const scrubRef     = useRef(null);
+  const hideTimer    = useRef(null);
 
-  const [playing,    setPlaying]    = useState(false);
-  const [muted,      setMuted]      = useState(false);
-  const [current,    setCurrent]    = useState(0);
-  const [duration,   setDuration]   = useState(0);
-  const [dragging,   setDragging]   = useState(false);
-  const [scrubHover, setScrubHover] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [showUI,     setShowUI]     = useState(true);
+  const [playing,      setPlaying]      = useState(false);
+  const [muted,        setMuted]        = useState(false);
+  const [current,      setCurrent]      = useState(0);
+  const [duration,     setDuration]     = useState(0);
+  const [dragging,     setDragging]     = useState(false);
+  const [scrubHover,   setScrubHover]   = useState(false);
+  const [fullscreen,   setFullscreen]   = useState(false);
+  const [showUI,       setShowUI]       = useState(true);
+  // null = not loaded yet; number = videoWidth / videoHeight
+  const [intrinsicRatio, setIntrinsicRatio] = useState(null);
 
-  // ── Auto-hide logic ──────────────────────────────────────────────────────
+  // ── Auto-hide ────────────────────────────────────────────────────────────
   const scheduleHide = useCallback(() => {
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => setShowUI(false), 2500);
@@ -55,32 +69,38 @@ export default function CinematicPlayer({ src, poster, className = '', style }) 
     scheduleHide();
   }, [scheduleHide]);
 
-  // Start hide timer once on mount.
   useEffect(() => {
     scheduleHide();
     return () => clearTimeout(hideTimer.current);
   }, [scheduleHide]);
 
-  // ── Video event listeners ────────────────────────────────────────────────
+  // ── Video events ─────────────────────────────────────────────────────────
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const onPlay    = () => setPlaying(true);
-    const onPause   = () => setPlaying(false);
-    const onTime    = () => setCurrent(v.currentTime);
-    const onLoaded  = () => setDuration(v.duration);
+
+    const onPlay     = () => setPlaying(true);
+    const onPause    = () => setPlaying(false);
+    const onTime     = () => setCurrent(v.currentTime);
+    const onMeta     = () => {
+      setDuration(v.duration);
+      if (v.videoWidth && v.videoHeight) {
+        setIntrinsicRatio(v.videoWidth / v.videoHeight);
+      }
+    };
     const onFSChange = () => setFullscreen(!!document.fullscreenElement);
 
     v.addEventListener('play',             onPlay);
     v.addEventListener('pause',            onPause);
     v.addEventListener('timeupdate',       onTime);
-    v.addEventListener('loadedmetadata',   onLoaded);
+    v.addEventListener('loadedmetadata',   onMeta);
     document.addEventListener('fullscreenchange', onFSChange);
+
     return () => {
       v.removeEventListener('play',           onPlay);
       v.removeEventListener('pause',          onPause);
       v.removeEventListener('timeupdate',     onTime);
-      v.removeEventListener('loadedmetadata', onLoaded);
+      v.removeEventListener('loadedmetadata', onMeta);
       document.removeEventListener('fullscreenchange', onFSChange);
     };
   }, []);
@@ -110,9 +130,7 @@ export default function CinematicPlayer({ src, poster, className = '', style }) 
   };
 
   // ── Scrubber ─────────────────────────────────────────────────────────────
-  const scrubRef = useRef(null);
-
-  const getScrubFraction = (clientX) => {
+  const getFraction = (clientX) => {
     const rect = scrubRef.current?.getBoundingClientRect();
     if (!rect) return 0;
     return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
@@ -122,20 +140,17 @@ export default function CinematicPlayer({ src, poster, className = '', style }) 
     e.stopPropagation();
     const v = videoRef.current;
     if (!v || !duration) return;
-    const frac = getScrubFraction(e.clientX);
-    v.currentTime = frac * duration;
+    v.currentTime = getFraction(e.clientX) * duration;
     setCurrent(v.currentTime);
   };
 
-  // Drag-scrub across the whole document so fast mouse moves stay tracked.
   const startDrag = (e) => {
     e.preventDefault();
     setDragging(true);
     const move = (ev) => {
       const v = videoRef.current;
       if (!v || !duration) return;
-      const frac = getScrubFraction(ev.clientX);
-      v.currentTime = frac * duration;
+      v.currentTime = getFraction(ev.clientX) * duration;
       setCurrent(v.currentTime);
     };
     const up = () => {
@@ -149,137 +164,157 @@ export default function CinematicPlayer({ src, poster, className = '', style }) 
 
   const progress = duration > 0 ? current / duration : 0;
 
+  // ── Sizing ───────────────────────────────────────────────────────────────
+  // Portrait = ratio < 1 (e.g. 9:16, 4:5). Default to landscape until we
+  // know the real ratio so there's no layout jump on supported browsers that
+  // report dimensions synchronously.
+  const isPortrait = intrinsicRatio !== null && intrinsicRatio < 1;
+
+  // The <video> element is the sizing driver.
+  // Landscape: width fills 100 %, height auto-follows. maxHeight guards against
+  //   pathologically tall containers (e.g. squarish in a narrow split-panel).
+  // Portrait:  height is capped, width auto-follows.
+  const videoStyle = isPortrait
+    ? { display: 'block', height: 'auto', maxHeight: '85vh', width: 'auto', maxWidth: '100%' }
+    : { display: 'block', width: '100%', height: 'auto', maxHeight: '85vh' };
+
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
+    // Outer: centres portrait videos; lets landscape fill full width.
+    // Receives className/style from the caller (rounded corners, shadow, etc.)
     <div
-      ref={containerRef}
-      className={`relative overflow-hidden bg-black group ${className}`}
+      className={`flex items-start justify-center overflow-hidden bg-black ${className}`}
       style={style}
       onMouseMove={revealUI}
-      onMouseLeave={() => scheduleHide()}
+      onMouseLeave={scheduleHide}
     >
-      {/* ── The video — untouched, full brightness, no overlay ── */}
-      {/* CRITICAL: nothing sits on top of this element except the
-          absolutely-positioned control bar which does NOT cover the video
-          content area with any tint. */}
-      <video
-        ref={videoRef}
-        src={src}
-        poster={poster}
-        autoPlay
-        playsInline
-        loop
-        muted={muted}
-        controls={false}
-        onClick={togglePlay}
-        className="w-full h-full object-contain cursor-pointer select-none"
-        style={{ display: 'block' }}
-      />
+      {/* Inner: shrink-wraps to the video so the control bar
+          attaches to the exact bottom edge of the playback area. */}
+      <div
+        ref={containerRef}
+        className="relative"
+        // Landscape: fill the flex container; Portrait: auto width.
+        style={isPortrait ? {} : { width: '100%' }}
+      >
+        {/* ── Video — untouched, full brightness, no overlay above it ── */}
+        <video
+          ref={videoRef}
+          src={src}
+          poster={poster}
+          autoPlay
+          playsInline
+          loop
+          muted={muted}
+          controls={false}
+          onClick={togglePlay}
+          style={videoStyle}
+          className="cursor-pointer select-none"
+        />
 
-      {/* ── Control bar — absolute, bottom, NO background over the video ── */}
-      <AnimatePresence>
-        {(showUI || dragging) && (
-          <motion.div
-            key="controls"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            // The ONLY "background" is a narrow gradient that sits behind the
-            // icons/text row — it is 40px tall and never reaches the video body.
-            // The video itself is 100% untouched.
-            className="absolute inset-x-0 bottom-0 px-3 pb-2 pt-6"
-            style={{
-              background:
-                'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)',
-              pointerEvents: 'auto',
-            }}
-            onMouseMove={(e) => e.stopPropagation()} // keep UI visible while interacting
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* ── Scrubber ── */}
-            <div
-              ref={scrubRef}
-              className="w-full mb-2 cursor-pointer"
-              style={{ paddingTop: 6, paddingBottom: 6 }} // larger hit target
-              onClick={handleScrubClick}
-              onMouseDown={startDrag}
-              onMouseEnter={() => setScrubHover(true)}
-              onMouseLeave={() => setScrubHover(false)}
+        {/* ── Control bar — gradient behind icons only, never over video ── */}
+        <AnimatePresence>
+          {(showUI || dragging) && (
+            <motion.div
+              key="controls"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.16, ease: 'easeOut' }}
+              // Gradient: 56 px at the bottom, fades to transparent above.
+              // It sits in the letterbox / below the last video row — never
+              // dimming active picture area.
+              className="absolute inset-x-0 bottom-0 px-3 pb-2.5 pt-8 pointer-events-auto"
+              style={{
+                background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%)',
+              }}
+              onMouseMove={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
-              {/* Track */}
+              {/* Scrubber */}
               <div
-                className="relative w-full rounded-full bg-white/20 transition-all duration-150"
-                style={{ height: scrubHover || dragging ? 6 : 3 }}
+                ref={scrubRef}
+                className="w-full mb-2.5 cursor-pointer"
+                style={{ paddingTop: 8, paddingBottom: 8 }}
+                onClick={handleScrubClick}
+                onMouseDown={startDrag}
+                onMouseEnter={() => setScrubHover(true)}
+                onMouseLeave={() => setScrubHover(false)}
               >
-                {/* Fill */}
                 <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-white"
-                  style={{ width: `${progress * 100}%`, transition: dragging ? 'none' : undefined }}
-                />
-                {/* Thumb — only visible on hover/drag */}
-                {(scrubHover || dragging) && (
+                  className="relative w-full rounded-full bg-white/25 transition-all duration-150"
+                  style={{ height: scrubHover || dragging ? 5 : 2 }}
+                >
+                  {/* Fill */}
                   <div
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white shadow-md"
-                    style={{ left: `${progress * 100}%` }}
+                    className="absolute inset-y-0 left-0 rounded-full bg-white"
+                    style={{
+                      width: `${progress * 100}%`,
+                      transition: dragging ? 'none' : 'width 0.1s linear',
+                    }}
                   />
-                )}
+                  {/* Thumb */}
+                  {(scrubHover || dragging) && (
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[11px] h-[11px] rounded-full bg-white shadow"
+                      style={{ left: `${progress * 100}%` }}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* ── Icon row ── */}
-            <div className="flex items-center gap-3 select-none">
-              {/* Play / Pause */}
-              <CtrlBtn onClick={togglePlay} label={playing ? 'Pause' : 'Play'}>
-                {playing
-                  ? <Pause  className="w-4 h-4 fill-white" />
-                  : <Play   className="w-4 h-4 fill-white" />}
-              </CtrlBtn>
+              {/* Icon row */}
+              <div className="flex items-center gap-3">
+                <Btn onClick={togglePlay} label={playing ? 'Pause' : 'Play'}>
+                  {playing
+                    ? <Pause  className="w-[15px] h-[15px] fill-white stroke-none" />
+                    : <Play   className="w-[15px] h-[15px] fill-white stroke-none" />}
+                </Btn>
 
-              {/* Time */}
-              <span
-                className="text-white/70 tabular-nums"
-                style={{
-                  fontSize: 11,
-                  fontVariantNumeric: 'tabular-nums',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                }}
-              >
-                {fmt(current)} / {fmt(duration)}
-              </span>
+                <span
+                  className="text-white/70 tabular-nums shrink-0"
+                  style={{
+                    fontSize: 11,
+                    fontVariantNumeric: 'tabular-nums',
+                    textShadow: '0 1px 4px rgba(0,0,0,0.85)',
+                  }}
+                >
+                  {fmt(current)} / {fmt(duration)}
+                </span>
 
-              {/* Spacer */}
-              <div className="flex-1" />
+                <div className="flex-1" />
 
-              {/* Volume */}
-              <CtrlBtn onClick={toggleMute} label={muted ? 'Unmute' : 'Mute'}>
-                {muted
-                  ? <VolumeX className="w-4 h-4" />
-                  : <Volume2 className="w-4 h-4" />}
-              </CtrlBtn>
+                <Btn onClick={toggleMute} label={muted ? 'Unmute' : 'Mute'}>
+                  {muted
+                    ? <VolumeX className="w-[15px] h-[15px]" />
+                    : <Volume2 className="w-[15px] h-[15px]" />}
+                </Btn>
 
-              {/* Fullscreen */}
-              <CtrlBtn onClick={toggleFullscreen} label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
-                {fullscreen
-                  ? <Minimize className="w-4 h-4" />
-                  : <Maximize className="w-4 h-4" />}
-              </CtrlBtn>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                <Btn
+                  onClick={toggleFullscreen}
+                  label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                >
+                  {fullscreen
+                    ? <Minimize className="w-[15px] h-[15px]" />
+                    : <Maximize className="w-[15px] h-[15px]" />}
+                </Btn>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
 
-// Tiny icon button — no background fill, just a hover ring. 
-function CtrlBtn({ onClick, label, children }) {
+// Minimal icon button — no fill, only text shadow for contrast.
+function Btn({ onClick, label, children }) {
   return (
     <button
       type="button"
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
       aria-label={label}
-      className="text-white/80 hover:text-white transition-colors"
-      style={{ lineHeight: 0, textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="text-white/80 hover:text-white transition-colors leading-none"
+      style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}
     >
       {children}
     </button>
