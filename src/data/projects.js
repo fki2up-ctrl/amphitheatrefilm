@@ -86,6 +86,10 @@ export const TOPICS = [
       image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/f_auto,q_auto/v1776527992/Screenshot_2569-04-18_at_22.54.53_hkqdzs.png",
       imagePosition: "50% 26%",
     }),
+    project({
+      title:    "Bvlgari",
+      url:      "https://video.amphitheatrefilm.com/1778741426023-D4_4K_FF_260426.mov",
+    }),
   ]),
 
   topic("MV, Live Session & Short Films", [
