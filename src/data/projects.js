@@ -27,7 +27,7 @@ export const PROFILE = {
   siteTitle:           "Film Natthawut - Portfolio",
   siteDescription:     "",
   favicon:             "/icons/favicon-32.png",
-  landingVideo:        "https://video.amphitheatrefilm.com/1776880775118-amphitheatrefilm-Showreel-2024.mp4",
+  landingVideo:        "",
   featuredVideo:       "",
   featuredVideoTitle:  "",
   featuredVideoPoster: "",
@@ -86,12 +86,6 @@ export const TOPICS = [
       image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/f_auto,q_auto/v1776527992/Screenshot_2569-04-18_at_22.54.53_hkqdzs.png",
       imagePosition: "50% 26%",
     }),
-    project({
-      title:    "Bvlgari",
-      url:      "https://video.amphitheatrefilm.com/1778745743723-D4_4K_FF_260426.mp4",
-      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1778746779/Screenshot_2569-05-14_at_15.18.03_mlsluu.png",
-      imagePosition: "49% 84%",
-    }),
   ]),
 
   topic("MV, Live Session & Short Films", [
@@ -139,6 +133,15 @@ export const TOPICS = [
   ]),
 
   topic("Fashion Film", [
+    project({
+      title:    "Bvlgari - Harper's Bazaar Thailand",
+      subtitle: "/w Orm Kornnaphat",
+      url:      "https://video.amphitheatrefilm.com/1778745743723-D4_4K_FF_260426.mp4",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/f_auto,q_auto/v1778746779/Screenshot_2569-05-14_at_15.18.03_mlsluu.png",
+      imagePosition: "49% 84%",
+      credits: [{"role":"Director","name":"Natthawut Niyomrot"},{"role":"Director of Photography","name":"Natthawut Niyomrot"}],
+      releaseUrl: "https://www.instagram.com/p/DX8O0B9z6lg/",
+    }),
     project({
       title:    "Louis Vuitton — Fall/Summer 2025",
       subtitle: "/w BamBam",
@@ -292,13 +295,16 @@ function topic(label, items) {
   };
 }
 
-function project({ title, subtitle = '', url, image = '', imagePosition = '50% 50%' }) {
+function project({ title, subtitle = '', url, image = '', imagePosition = '50% 50%', directorNote = '', credits = [], releaseUrl = '' }) {
   return {
     title,
     subtitle,
     url,
     thumbnail: image || autoThumbnail(url),
     imagePosition,
+    directorNote,
+    credits,
+    releaseUrl,
   };
 }
 
