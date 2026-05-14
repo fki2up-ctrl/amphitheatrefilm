@@ -21,17 +21,28 @@ export const CATEGORY_ALL = ALL;
 
 const PhaseContext = createContext(null);
 
+const SEEN_KEY = 'amphitheatre:intro:seen';
+
 export function PhaseProvider({ children }) {
-  // 'intro' | 'landing' | 'gallery'
-  const [phase, setPhase] = useState('intro');
+  // If the user has visited before, skip straight to Landing so they don't
+  // sit through the cinematic intro on every page load.
+  const [phase, setPhase] = useState(() => {
+    try {
+      return localStorage.getItem(SEEN_KEY) ? 'landing' : 'intro';
+    } catch {
+      return 'intro';
+    }
+  });
 
   // When the user clicks a category on Landing, we stash which one was
   // selected so the Gallery can render it. 'all' is the sentinel for the
   // long-scroll view; anything else is a topic id from the content store.
   const [selectedCategory, setSelectedCategory] = useState(ALL);
 
-  // Action: Intro sequence has finished — enter Landing.
+  // Action: Intro sequence has finished — enter Landing. Mark as seen so
+  // future visits skip the intro.
   const completeIntro = useCallback(() => {
+    try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ }
     setPhase((p) => (p === 'intro' ? 'landing' : p));
   }, []);
 

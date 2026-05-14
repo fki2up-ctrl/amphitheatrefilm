@@ -47,6 +47,11 @@ create table if not exists public.projects (
   updated_at      timestamptz not null default now()
 );
 
+-- Forward-compat: add project detail columns for the cinematic side-panel.
+alter table public.projects add column if not exists director_note text default '';
+alter table public.projects add column if not exists credits       jsonb default '[]'::jsonb;
+alter table public.projects add column if not exists release_url   text default '';
+
 create index if not exists projects_topic_order_idx
   on public.projects (topic_id, order_index);
 

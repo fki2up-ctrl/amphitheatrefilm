@@ -1283,6 +1283,75 @@ function ProjectRow({
             position={p.imagePosition || '50% 50%'}
             onChange={(pos) => updateProject(ti, pi, { imagePosition: pos })}
           />
+
+          {/* ── Cinematic detail fields ────────────────────────────── */}
+          <div className="pt-2 mt-2 border-t border-white/5 space-y-2">
+            <Field
+              label="Director's Note / Background"
+              value={p.directorNote}
+              onChange={(v) => updateProject(ti, pi, { directorNote: v })}
+              compact
+              textarea
+            />
+
+            {/* Credits repeater */}
+            <div>
+              <p className="text-[11px] text-white/50 mb-1.5">Credits</p>
+              <div className="space-y-1.5">
+                {(Array.isArray(p.credits) ? p.credits : []).map((c, ci) => (
+                  <div key={ci} className="flex items-center gap-1.5">
+                    <input
+                      value={c.role || ''}
+                      onChange={(e) => {
+                        const next = [...p.credits];
+                        next[ci] = { ...next[ci], role: e.target.value };
+                        updateProject(ti, pi, { credits: next });
+                      }}
+                      placeholder="Role"
+                      className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded px-2 py-1 text-[12px] text-white/80 placeholder:text-white/30 focus:border-white/30 outline-none"
+                    />
+                    <input
+                      value={c.name || ''}
+                      onChange={(e) => {
+                        const next = [...p.credits];
+                        next[ci] = { ...next[ci], name: e.target.value };
+                        updateProject(ti, pi, { credits: next });
+                      }}
+                      placeholder="Name"
+                      className="flex-[1.5] min-w-0 bg-white/5 border border-white/10 rounded px-2 py-1 text-[12px] text-white/80 placeholder:text-white/30 focus:border-white/30 outline-none"
+                    />
+                    <IconBtn
+                      title="Remove credit"
+                      onClick={() => {
+                        const next = p.credits.filter((_, j) => j !== ci);
+                        updateProject(ti, pi, { credits: next });
+                      }}
+                      danger
+                    >
+                      <X className="w-3 h-3" />
+                    </IconBtn>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...(p.credits || []), { role: '', name: '' }];
+                  updateProject(ti, pi, { credits: next });
+                }}
+                className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-white/55 hover:text-white/80 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Add credit
+              </button>
+            </div>
+
+            <Field
+              label="Official Release URL"
+              value={p.releaseUrl}
+              onChange={(v) => updateProject(ti, pi, { releaseUrl: v })}
+              compact
+            />
+          </div>
         </div>
       )}
     </div>

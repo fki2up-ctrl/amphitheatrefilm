@@ -2,6 +2,32 @@ import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, ExternalLink } from 'lucide-react';
 import { resolveEmbed } from '../lib/embed';
+import CinematicPlayer from './CinematicPlayer';
+
+// ---------------------------------------------------------------------------
+// Stagger orchestration for the side-panel text elements.
+// ---------------------------------------------------------------------------
+const panelContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } },
+};
+
+const panelChild = {
+  hidden: { opacity: 0, y: 12 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
+};
+
+// ---------------------------------------------------------------------------
+// VideoModal — cinematic project detail overlay.
+//
+// Layout:
+//   Desktop (≥1024 px): 65 % video | 35 % metadata side-panel
+//   Mobile  (<1024 px): stacked — video on top, metadata below
+//
+// When a project has no metadata (directorNote, credits, releaseUrl all
+// empty) the side-panel is hidden and the video takes 100 % width, matching
+// the original simple-modal behaviour.
+// ---------------------------------------------------------------------------
 
 export default function VideoModal({ project, onClose }) {
   // Close on ESC and lock body scroll while open.
@@ -19,6 +45,12 @@ export default function VideoModal({ project, onClose }) {
 
   const info = project ? resolveEmbed(project.url) : null;
 
+  const hasMetadata =
+    project &&
+    ((project.directorNote && project.directorNote.trim()) ||
+     (Array.isArray(project.credits) && project.credits.length > 0) ||
+     (project.releaseUrl && project.releaseUrl.trim()));
+
   return (
     <AnimatePresence>
       {project && info && (
@@ -28,7 +60,7 @@ export default function VideoModal({ project, onClose }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed z-[80] bg-black/90 flex items-center justify-center p-4 sm:p-8"
+          className="fixed z-[80] bg-black/90 flex items-center justify-center"
           onClick={onClose}
           style={{
             top: -1,
@@ -39,86 +71,87 @@ export default function VideoModal({ project, onClose }) {
             WebkitBackdropFilter: 'blur(20px)',
           }}
         >
-          {/* header */}
-          <div className="absolute top-0 inset-x-0 p-4 sm:p-6 flex items-start justify-between gap-6 text-white/80">
-            <div className="min-w-0">
-              <p className="text-[10px] tracking-widest2 uppercase text-white/45">
-                {project.categoryLabel}
-              </p>
-              <h3 className="font-display mt-1 text-xl sm:text-2xl leading-tight truncate">
-                {project.title}
-              </h3>
-              {project.subtitle && (
-                <p className="mt-0.5 text-xs text-white/55 truncate">
-                  {project.subtitle}
-                </p>
-              )}
-            </div>
+          {/* Close button — always top-right */}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 w-10 h-10 rounded-full border border-white/15 flex items-center justify-center text-white/80 hover:text-white hover:border-white/50 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <a
-                href={project.url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs border border-white/15 hover:border-white/40 hover:text-white text-white/75"
-              >
-                Open source <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-              <button
-                onClick={onClose}
-                aria-label="Close"
-                className="w-10 h-10 rounded-full border border-white/15 flex items-center justify-center text-white/80 hover:text-white hover:border-white/50 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* player */}
+          {/* Main content wrapper — split or full-width */}
           <motion.div
-            key="player"
-            // Entry: slide up from bottom + start blurred, become sharp.
-            initial={{ opacity: 0, y: 120, }}
+            key="content"
+            initial={{ opacity: 0, y: 60, scale: 0.75 }}
             animate={{
               opacity: 1,
               y: 0,
+              scale: 1,
               transition: {
-                y: { type: 'spring', stiffness: 160, damping: 22, mass: 0.9 },
-                opacity: { duration: 0.4, ease: 'easeOut' },
-                filter: { duration: 0.55, ease: 'easeOut' },
+                y:       { type: 'spring', stiffness: 180, damping: 24, mass: 0.8 },
+                scale:   { type: 'spring', stiffness: 180, damping: 22, mass: 0.8 },
+                opacity: { duration: 0.3, ease: 'easeOut' },
               },
             }}
-            // Exit: blur back out + fade down.
             exit={{
               opacity: 0,
-              y: 40,
-              filter: 'blur(24px)',
-              transition: { duration: 0.35, ease: [0.4, 0, 1, 1] },
+              scale: 0.88,
+              y: 24,
+              filter: 'blur(20px)',
+              transition: { duration: 0.28, ease: [0.4, 0, 1, 1] },
             }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-6xl"
+            className={[
+              'relative w-full',
+              hasMetadata ? 'max-w-[1400px]' : 'max-w-6xl',
+            ].join(' ')}
             style={{
               willChange: 'filter, transform, opacity',
               transform: 'translateZ(0)',
               isolation: 'isolate',
+              maxHeight: '92vh',
+              padding: 'clamp(16px, 3vw, 32px)',
             }}
           >
-            <PlayerFrame info={info} title={project.title} />
-            {info.kind === 'unknown' && (
-              <div className="mt-4 text-center text-sm text-white/60">
-                Could not embed this URL.{' '}
-                <a
-                  href={project.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline hover:text-white"
-                >
-                  Open it in a new tab
-                </a>
-                .
+            <div
+              className={[
+                hasMetadata
+                  ? 'flex flex-col lg:flex-row gap-0 lg:gap-0 rounded-xl overflow-hidden ring-1 ring-white/10 shadow-2xl bg-ink-950'
+                  : '',
+              ].join(' ')}
+              style={hasMetadata ? { maxHeight: '85vh' } : undefined}
+            >
+              {/* ---- Video (left / top) ---- */}
+              <div
+                className={[
+                  hasMetadata
+                    ? 'lg:w-[65%] shrink-0'
+                    : 'w-full',
+                ].join(' ')}
+              >
+                <PlayerFrame info={info} title={project.title} hasPanel={hasMetadata} />
+                {info.kind === 'unknown' && (
+                  <div className="mt-4 text-center text-sm text-white/60">
+                    Could not embed this URL.{' '}
+                    <a
+                      href={project.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-white"
+                    >
+                      Open it in a new tab
+                    </a>
+                    .
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* ---- Metadata side-panel (right / bottom) ---- */}
+              {hasMetadata && (
+                <MetadataPanel project={project} />
+              )}
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -126,28 +159,108 @@ export default function VideoModal({ project, onClose }) {
   );
 }
 
-function PlayerFrame({ info, title }) {
-  // Direct video files (Backblaze B2, raw .mp4/.webm) — native <video>
-  // element so there's no iframe and no CSP frame-src restriction.
+// ---------------------------------------------------------------------------
+// MetadataPanel — right side on desktop, below on mobile.
+// ---------------------------------------------------------------------------
+function MetadataPanel({ project }) {
+  const credits = Array.isArray(project.credits) ? project.credits.filter(c => c.role || c.name) : [];
+
+  return (
+    <motion.div
+      className="lg:w-[35%] overflow-y-auto pretty-scroll border-t lg:border-t-0 lg:border-l border-white/10"
+      style={{ maxHeight: '85vh' }}
+      variants={panelContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <div className="p-5 sm:p-6 lg:p-8 space-y-6">
+        {/* Header */}
+        <motion.div variants={panelChild}>
+          <p className="text-[10px] tracking-widest2 uppercase text-white/45 mb-1">
+            {project.categoryLabel}
+          </p>
+          <h3 className="font-display text-xl sm:text-2xl leading-tight text-white">
+            {project.title}
+          </h3>
+          {project.subtitle && (
+            <p className="mt-1 text-sm text-white/55">
+              {project.subtitle}
+            </p>
+          )}
+        </motion.div>
+
+        {/* Divider */}
+        <motion.div variants={panelChild}>
+          <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
+        </motion.div>
+
+        {/* Director's Note */}
+        {project.directorNote && project.directorNote.trim() && (
+          <motion.div variants={panelChild}>
+            <p className="text-[10px] tracking-widest2 uppercase text-white/40 mb-2">
+              Director&rsquo;s Note
+            </p>
+            <p className="text-[13px] leading-relaxed text-white/75 whitespace-pre-line">
+              {project.directorNote}
+            </p>
+          </motion.div>
+        )}
+
+        {/* Credits */}
+        {credits.length > 0 && (
+          <motion.div variants={panelChild}>
+            <p className="text-[10px] tracking-widest2 uppercase text-white/40 mb-3">
+              Credits
+            </p>
+            <div className="space-y-1.5">
+              {credits.map((c, i) => (
+                <div key={i} className="flex items-baseline gap-3 text-[13px]">
+                  <span className="text-white/40 shrink-0 min-w-[80px]">{c.role}</span>
+                  <span className="text-white/85">{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* External link */}
+        {project.releaseUrl && project.releaseUrl.trim() && (
+          <motion.div variants={panelChild}>
+            <a
+              href={project.releaseUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs border border-white/15 text-white/75 hover:text-white hover:border-white/50 transition-all hover:shadow-[0_0_16px_rgba(255,255,255,0.08)]"
+            >
+              View Official Release
+              <ExternalLink className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </a>
+          </motion.div>
+        )}
+
+      </div>
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PlayerFrame — renders the correct player for the embed kind.
+// ---------------------------------------------------------------------------
+function PlayerFrame({ info, title, hasPanel }) {
+  // Direct video files (Backblaze B2, raw .mp4/.webm) — CinematicPlayer
+  // so the native controls are replaced by our custom closed-UI bar.
   if (info.kind === 'direct') {
     return (
-      <div
-        className="mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 bg-black"
+      <CinematicPlayer
+        src={info.embedUrl}
+        className={[
+          hasPanel ? '' : 'mx-auto rounded-xl shadow-2xl ring-1 ring-white/10',
+        ].join(' ')}
         style={{
           aspectRatio: '16 / 9',
-          width: 'min(100%, calc(85vh * 16 / 9))',
+          width: hasPanel ? '100%' : 'min(100%, calc(85vh * 16 / 9))',
         }}
-      >
-        <video
-          src={info.embedUrl}
-          title={title}
-          autoPlay
-          controls
-          playsInline
-          loop
-          className="w-full h-full object-contain"
-        />
-      </div>
+      />
     );
   }
 
@@ -156,12 +269,13 @@ function PlayerFrame({ info, title }) {
   if (info.kind === 'instagram') {
     return (
       <div
-        className="mx-auto bg-white rounded-xl overflow-hidden shadow-2xl"
+        className={[
+          'bg-white overflow-hidden',
+          hasPanel ? '' : 'mx-auto rounded-xl shadow-2xl',
+        ].join(' ')}
         style={{
           aspectRatio: '9 / 16',
-          // Honour aspect ratio: width is either the natural 9:16 of available
-          // height (85vh) or the max 480 px cap — whichever is smaller.
-          width: 'min(480px, 100%, calc(85vh * 9 / 16))',
+          width: hasPanel ? '100%' : 'min(480px, 100%, calc(85vh * 9 / 16))',
         }}
       >
         <iframe
@@ -170,7 +284,7 @@ function PlayerFrame({ info, title }) {
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
           scrolling="no"
-          className="w-full h-full border-0 block rounded-xl"
+          className="w-full h-full border-0 block"
         />
       </div>
     );
@@ -178,13 +292,13 @@ function PlayerFrame({ info, title }) {
 
   return (
     <div
-      className="mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10"
+      className={[
+        'overflow-hidden bg-black',
+        hasPanel ? '' : 'mx-auto rounded-xl shadow-2xl ring-1 ring-white/10',
+      ].join(' ')}
       style={{
         aspectRatio: '16 / 9',
-        // Honour aspect ratio: clamp width to whichever is smaller — the
-        // container's 100 % or the width that produces 85 vh at 16:9. This
-        // prevents YouTube from letterboxing the video with black bars.
-        width: 'min(100%, calc(85vh * 16 / 9))',
+        width: hasPanel ? '100%' : 'min(100%, calc(85vh * 16 / 9))',
       }}
     >
       <iframe
@@ -192,7 +306,7 @@ function PlayerFrame({ info, title }) {
         title={title}
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
         allowFullScreen
-        className="w-full h-full border-0 block rounded-xl"
+        className="w-full h-full border-0 block"
       />
     </div>
   );

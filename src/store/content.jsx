@@ -163,6 +163,9 @@ function buildInitial() {
         // CSS object-position — e.g. '50% 50%'. Controls which part of the
         // thumbnail image is visible inside the 1.43:1 card crop.
         imagePosition: '50% 50%',
+        directorNote: p.directorNote ?? '',
+        credits: Array.isArray(p.credits) ? p.credits : [],
+        releaseUrl: p.releaseUrl ?? '',
       })),
     })),
   };
@@ -189,6 +192,9 @@ function loadStored() {
         url: p.url ?? '',
         image: p.image ?? '',
         imagePosition: p.imagePosition ?? '50% 50%',
+        directorNote: p.directorNote ?? '',
+        credits: Array.isArray(p.credits) ? p.credits : [],
+        releaseUrl: p.releaseUrl ?? '',
       })),
     }));
     return {
@@ -346,7 +352,7 @@ export function ContentProvider({ children }) {
             .order('order_index', { ascending: true }),
           supabase
             .from('projects')
-            .select('id, topic_id, title, subtitle, url, image, image_position, order_index')
+            .select('id, topic_id, title, subtitle, url, image, image_position, order_index, director_note, credits, release_url')
             .order('order_index', { ascending: true }),
           supabase
             .from('site_settings')
@@ -397,6 +403,9 @@ export function ContentProvider({ children }) {
             url: p.url || '',
             image: p.image || '',
             imagePosition: p.image_position || '50% 50%',
+            directorNote: p.director_note || '',
+            credits: Array.isArray(p.credits) ? p.credits : [],
+            releaseUrl: p.release_url || '',
           })),
         }));
 
@@ -491,7 +500,7 @@ export function ContentProvider({ children }) {
       const t = { ...TOPICS[ti] };
       t.projects = [
         ...t.projects,
-        { id: genId(), title: 'New project', subtitle: '', url: '', image: '', imagePosition: '50% 50%' },
+        { id: genId(), title: 'New project', subtitle: '', url: '', image: '', imagePosition: '50% 50%', directorNote: '', credits: [], releaseUrl: '' },
       ];
       TOPICS[ti] = t;
       return { ...s, TOPICS };
@@ -609,6 +618,9 @@ export function ContentProvider({ children }) {
             url: p.url || '',
             image: normalizeCloudinaryForStorage(p.image || ''),
             image_position: p.imagePosition || '50% 50%',
+            director_note: p.directorNote || '',
+            credits: Array.isArray(p.credits) && p.credits.length > 0 ? p.credits : [],
+            release_url: p.releaseUrl || '',
             order_index: pi,
             updated_at: now,
           });
@@ -703,6 +715,9 @@ export function ContentProvider({ children }) {
           url: p.url,
           thumbnail: p.image || autoThumbnail(p.url),
           imagePosition: p.imagePosition || '50% 50%',
+          directorNote: p.directorNote || '',
+          credits: Array.isArray(p.credits) ? p.credits : [],
+          releaseUrl: p.releaseUrl || '',
         })),
       };
     });
@@ -796,6 +811,11 @@ export function serializeToProjectsJs(state) {
           p.imagePosition && p.imagePosition !== '50% 50%'
             ? `      imagePosition: ${s(p.imagePosition)},`
             : null,
+          p.directorNote ? `      directorNote: ${s(p.directorNote)},` : null,
+          Array.isArray(p.credits) && p.credits.length > 0
+            ? `      credits: ${s(p.credits)},`
+            : null,
+          p.releaseUrl ? `      releaseUrl: ${s(p.releaseUrl)},` : null,
         ].filter(Boolean);
         return `    project({\n${lines.join('\n')}\n    }),`;
       })
@@ -880,13 +900,16 @@ function topic(label, items) {
   };
 }
 
-function project({ title, subtitle = '', url, image = '', imagePosition = '50% 50%' }) {
+function project({ title, subtitle = '', url, image = '', imagePosition = '50% 50%', directorNote = '', credits = [], releaseUrl = '' }) {
   return {
     title,
     subtitle,
     url,
     thumbnail: image || autoThumbnail(url),
     imagePosition,
+    directorNote,
+    credits,
+    releaseUrl,
   };
 }
 
