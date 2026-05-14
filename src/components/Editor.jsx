@@ -804,63 +804,200 @@ function TopicsSection({ c }) {
         {state.TOPICS.map((t, ti) => {
           const isOpen = open[ti] ?? ti === 0;
           return (
-            <div key={ti} className="rounded-lg border border-white/10 bg-white/[0.02]">
-              <div className="flex items-center gap-2 p-2.5">
-                <button
-                  onClick={() => toggle(ti)}
-                  className="flex-1 text-left text-sm text-white/85 hover:text-white px-2 py-1"
-                >
-                  <span className="text-white/40 mr-2 tabular-nums">
-                    {String(ti + 1).padStart(2, '0')}
-                  </span>
-                  {t.label || 'Untitled topic'}
-                  <span className="ml-2 text-[10px] text-white/40">
-                    · {t.projects.length} projects
-                  </span>
-                </button>
-                <IconBtn title="Move up" onClick={() => moveTopic(ti, -1)}>
-                  <ArrowUp className="w-3.5 h-3.5" />
-                </IconBtn>
-                <IconBtn title="Move down" onClick={() => moveTopic(ti, +1)}>
-                  <ArrowDown className="w-3.5 h-3.5" />
-                </IconBtn>
-                <IconBtn
-                  title="Delete topic"
-                  onClick={() => {
-                    if (window.confirm(`Delete "${t.label}" and all its projects?`)) {
-                      removeTopic(ti);
-                    }
-                  }}
-                  danger
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </IconBtn>
-              </div>
-
-              {isOpen && (
-                <div className="px-3 pb-3 pt-1 space-y-3 border-t border-white/5">
-                  <Field
-                    label="Topic name"
-                    value={t.label}
-                    onChange={(v) => updateTopic(ti, { label: v })}
-                  />
-
-                  <ProjectList
-                    ti={ti}
-                    topic={t}
-                    updateProject={updateProject}
-                    removeProject={removeProject}
-                    moveProject={moveProject}
-                    moveProjectTo={moveProjectTo}
-                    addProject={addProject}
-                  />
-                </div>
-              )}
-            </div>
+            <TopicCard
+              key={ti}
+              ti={ti}
+              t={t}
+              isOpen={isOpen}
+              onToggle={() => toggle(ti)}
+              onExpand={() => setOpen((o) => ({ ...o, [ti]: true }))}
+              updateTopic={updateTopic}
+              removeTopic={removeTopic}
+              moveTopic={moveTopic}
+              updateProject={updateProject}
+              removeProject={removeProject}
+              moveProject={moveProject}
+              moveProjectTo={moveProjectTo}
+              addProject={addProject}
+            />
           );
         })}
       </div>
     </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TopicCard — one collapsible topic row.
+// When collapsed it shows a thin drop zone so projects can be moved into it
+// without opening it first. When a drag enters the header it auto-expands.
+// ---------------------------------------------------------------------------
+function TopicCard({
+  ti, t, isOpen, onToggle, onExpand,
+  updateTopic, removeTopic, moveTopic,
+  updateProject, removeProject, moveProject, moveProjectTo, addProject,
+}) {
+  const [headerDragOver, setHeaderDragOver] = useState(false);
+  const expandTimer = useRef(null);
+
+  const clearExpandTimer = () => {
+    if (expandTimer.current) { clearTimeout(expandTimer.current); expandTimer.current = null; }
+  };
+
+  // When a project card is dragged over the collapsed header, auto-expand
+  // after 600 ms — same pattern as OS folder drag-open.
+  const onHeaderDragOver = (e) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setHeaderDragOver(true);
+    if (!isOpen && !expandTimer.current) {
+      expandTimer.current = setTimeout(() => { onExpand(); expandTimer.current = null; }, 600);
+    }
+  };
+
+  const onHeaderDragLeave = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setHeaderDragOver(false);
+    clearExpandTimer();
+  };
+
+  const onHeaderDrop = (e) => {
+    setHeaderDragOver(false);
+    clearExpandTimer();
+    const payload = readDragPayload(e.dataTransfer);
+    if (!payload) return;
+    e.preventDefault();
+    // Drop onto the header → append to end of this topic.
+    moveProjectTo(payload.ti, payload.pi, ti, t.projects.length);
+    onExpand();
+  };
+
+  return (
+    <div
+      className={[
+        'rounded-lg border bg-white/[0.02] transition-colors',
+        headerDragOver ? 'border-emerald-400/60' : 'border-white/10',
+      ].join(' ')}
+    >
+      {/* Header — also a drop target for cross-topic moves */}
+      <div
+        className="flex items-center gap-2 p-2.5"
+        onDragOver={onHeaderDragOver}
+        onDragLeave={onHeaderDragLeave}
+        onDrop={onHeaderDrop}
+      >
+        <button
+          onClick={onToggle}
+          className="flex-1 text-left text-sm text-white/85 hover:text-white px-2 py-1"
+        >
+          <span className="text-white/40 mr-2 tabular-nums">
+            {String(ti + 1).padStart(2, '0')}
+          </span>
+          {t.label || 'Untitled topic'}
+          <span className="ml-2 text-[10px] text-white/40">
+            · {t.projects.length} projects
+          </span>
+          {headerDragOver && !isOpen && (
+            <span className="ml-2 text-[10px] text-emerald-300/90">
+              Drop to add →
+            </span>
+          )}
+        </button>
+        <IconBtn title="Move up" onClick={() => moveTopic(ti, -1)}>
+          <ArrowUp className="w-3.5 h-3.5" />
+        </IconBtn>
+        <IconBtn title="Move down" onClick={() => moveTopic(ti, +1)}>
+          <ArrowDown className="w-3.5 h-3.5" />
+        </IconBtn>
+        <IconBtn
+          title="Delete topic"
+          onClick={() => {
+            if (window.confirm(`Delete "${t.label}" and all its projects?`)) {
+              removeTopic(ti);
+            }
+          }}
+          danger
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </IconBtn>
+      </div>
+
+      {isOpen && (
+        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-white/5">
+          <Field
+            label="Topic name"
+            value={t.label}
+            onChange={(v) => updateTopic(ti, { label: v })}
+          />
+
+          <ProjectList
+            ti={ti}
+            topic={t}
+            updateProject={updateProject}
+            removeProject={removeProject}
+            moveProject={moveProject}
+            moveProjectTo={moveProjectTo}
+            addProject={addProject}
+          />
+        </div>
+      )}
+
+      {/* Collapsed drop zone — visible only while a drag is active */}
+      {!isOpen && (
+        <CollapsedDropZone
+          ti={ti}
+          topic={t}
+          moveProjectTo={moveProjectTo}
+          onExpand={onExpand}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CollapsedDropZone — rendered at the bottom of a collapsed TopicCard.
+// Invisible until a drag enters it; then shows a highlighted strip so the
+// user knows they can drop here to append to this topic.
+function CollapsedDropZone({ ti, topic, moveProjectTo, onExpand }) {
+  const [active, setActive] = useState(false);
+
+  const onDragOver = (e) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setActive(true);
+  };
+
+  const onDragLeave = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    setActive(false);
+  };
+
+  const onDrop = (e) => {
+    setActive(false);
+    const payload = readDragPayload(e.dataTransfer);
+    if (!payload) return;
+    e.preventDefault();
+    moveProjectTo(payload.ti, payload.pi, ti, topic.projects.length);
+    onExpand();
+  };
+
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={[
+        'mx-2 mb-2 rounded-md border border-dashed text-[11px] text-center py-1.5 transition-all',
+        active
+          ? 'border-emerald-400/70 text-emerald-200 bg-emerald-500/10'
+          : 'border-transparent text-transparent',
+      ].join(' ')}
+    >
+      Drop here to move into &ldquo;{topic.label}&rdquo;
+    </div>
   );
 }
 
