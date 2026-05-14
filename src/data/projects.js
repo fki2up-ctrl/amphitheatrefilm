@@ -89,6 +89,8 @@ export const TOPICS = [
     project({
       title:    "Bvlgari",
       url:      "https://video.amphitheatrefilm.com/1778745743723-D4_4K_FF_260426.mp4",
+      image:    "https://res.cloudinary.com/dhva8jxvn/image/upload/v1778746779/Screenshot_2569-05-14_at_15.18.03_mlsluu.png",
+      imagePosition: "49% 84%",
     }),
   ]),
 
