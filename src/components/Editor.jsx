@@ -1265,6 +1265,37 @@ function ProjectRow({
             onPick={(url) => updateProject(ti, pi, { url })}
             compact
           />
+
+          {/* Video aspect ratio — for iframe embeds (YouTube / Vimeo).
+              Direct .mp4/.webm files auto-detect from the video element. */}
+          <div>
+            <p className="text-[10px] text-white/45 mb-1">Video Aspect Ratio</p>
+            <div className="flex flex-wrap gap-1">
+              {[
+                { label: '16:9',  value: '16/9' },
+                { label: '9:16',  value: '9/16' },
+                { label: '4:5',   value: '4/5'  },
+                { label: '1:1',   value: '1/1'  },
+                { label: '4:3',   value: '4/3'  },
+              ].map(({ label, value }) => {
+                const active = (p.videoAspectRatio || '16/9') === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => updateProject(ti, pi, { videoAspectRatio: value })}
+                    className={`px-2.5 py-1 rounded text-[11px] border transition-colors ${
+                      active
+                        ? 'border-white/50 text-white bg-white/10'
+                        : 'border-white/10 text-white/45 hover:border-white/30 hover:text-white/70'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <Field
             label="Custom image URL (optional — YouTube auto-derives)"
             value={p.image}

@@ -130,7 +130,7 @@ export default function VideoModal({ project, onClose }) {
                     : 'w-full',
                 ].join(' ')}
               >
-                <PlayerFrame info={info} title={project.title} hasPanel={hasMetadata} />
+                <PlayerFrame info={info} title={project.title} hasPanel={hasMetadata} aspectRatio={project.videoAspectRatio || '16/9'} />
                 {info.kind === 'unknown' && (
                   <div className="mt-4 text-center text-sm text-white/60">
                     Could not embed this URL.{' '}
@@ -197,9 +197,6 @@ function MetadataPanel({ project }) {
         {/* Director's Note */}
         {project.directorNote && project.directorNote.trim() && (
           <motion.div variants={panelChild}>
-            <p className="text-[10px] tracking-widest2 uppercase text-white/40 mb-2">
-              Director&rsquo;s Note
-            </p>
             <p className="text-[13px] leading-relaxed text-white/75 whitespace-pre-line">
               {project.directorNote}
             </p>
@@ -246,7 +243,7 @@ function MetadataPanel({ project }) {
 // ---------------------------------------------------------------------------
 // PlayerFrame — renders the correct player for the embed kind.
 // ---------------------------------------------------------------------------
-function PlayerFrame({ info, title, hasPanel }) {
+function PlayerFrame({ info, title, hasPanel, aspectRatio = '16/9' }) {
   // Direct video files (Backblaze B2, raw .mp4/.webm) — CinematicPlayer
   // so the native controls are replaced by our custom closed-UI bar.
   // No hardcoded aspect ratio — the component reads the video's intrinsic
@@ -262,9 +259,9 @@ function PlayerFrame({ info, title, hasPanel }) {
     );
   }
 
-  // Instagram's embed iframe ships its own chrome + caption, so we give it a
-  // taller / narrower frame and a dark card. YouTube / Vimeo run at 16:9.
+  // Instagram: always 9:16 (platform enforces portrait chrome).
   if (info.kind === 'instagram') {
+    const ratio = aspectRatio !== '16/9' ? aspectRatio : '9/16';
     return (
       <div
         className={[
@@ -272,8 +269,8 @@ function PlayerFrame({ info, title, hasPanel }) {
           hasPanel ? '' : 'mx-auto rounded-xl shadow-2xl',
         ].join(' ')}
         style={{
-          aspectRatio: '9 / 16',
-          width: hasPanel ? '100%' : 'min(480px, 100%, calc(85vh * 9 / 16))',
+          aspectRatio: ratio.replace('/', ' / '),
+          width: hasPanel ? '100%' : `min(480px, 100%, calc(85vh * ${evalRatio(ratio)}))`,
         }}
       >
         <iframe
@@ -288,6 +285,7 @@ function PlayerFrame({ info, title, hasPanel }) {
     );
   }
 
+  // YouTube / Vimeo — use the editor-specified ratio.
   return (
     <div
       className={[
@@ -295,8 +293,8 @@ function PlayerFrame({ info, title, hasPanel }) {
         hasPanel ? '' : 'mx-auto rounded-xl shadow-2xl ring-1 ring-white/10',
       ].join(' ')}
       style={{
-        aspectRatio: '16 / 9',
-        width: hasPanel ? '100%' : 'min(100%, calc(85vh * 16 / 9))',
+        aspectRatio: aspectRatio.replace('/', ' / '),
+        width: hasPanel ? '100%' : `min(100%, calc(85vh * ${evalRatio(aspectRatio)}))`,
       }}
     >
       <iframe
@@ -308,4 +306,10 @@ function PlayerFrame({ info, title, hasPanel }) {
       />
     </div>
   );
+}
+
+// '16/9' → 16/9 (number) for width calculations.
+function evalRatio(r) {
+  const [w, h] = String(r).split('/').map(Number);
+  return (w && h) ? w / h : 16 / 9;
 }

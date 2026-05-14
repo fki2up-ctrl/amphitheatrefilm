@@ -166,6 +166,7 @@ function buildInitial() {
         directorNote: p.directorNote ?? '',
         credits: Array.isArray(p.credits) ? p.credits : [],
         releaseUrl: p.releaseUrl ?? '',
+        videoAspectRatio: p.videoAspectRatio ?? '16/9',
       })),
     })),
   };
@@ -195,6 +196,7 @@ function loadStored() {
         directorNote: p.directorNote ?? '',
         credits: Array.isArray(p.credits) ? p.credits : [],
         releaseUrl: p.releaseUrl ?? '',
+        videoAspectRatio: p.videoAspectRatio ?? '16/9',
       })),
     }));
     return {
@@ -352,7 +354,7 @@ export function ContentProvider({ children }) {
             .order('order_index', { ascending: true }),
           supabase
             .from('projects')
-            .select('id, topic_id, title, subtitle, url, image, image_position, order_index, director_note, credits, release_url')
+            .select('id, topic_id, title, subtitle, url, image, image_position, order_index, director_note, credits, release_url, video_aspect_ratio')
             .order('order_index', { ascending: true }),
           supabase
             .from('site_settings')
@@ -406,6 +408,7 @@ export function ContentProvider({ children }) {
             directorNote: p.director_note || '',
             credits: Array.isArray(p.credits) ? p.credits : [],
             releaseUrl: p.release_url || '',
+            videoAspectRatio: p.video_aspect_ratio || '16/9',
           })),
         }));
 
@@ -500,7 +503,7 @@ export function ContentProvider({ children }) {
       const t = { ...TOPICS[ti] };
       t.projects = [
         ...t.projects,
-        { id: genId(), title: 'New project', subtitle: '', url: '', image: '', imagePosition: '50% 50%', directorNote: '', credits: [], releaseUrl: '' },
+        { id: genId(), title: 'New project', subtitle: '', url: '', image: '', imagePosition: '50% 50%', directorNote: '', credits: [], releaseUrl: '', videoAspectRatio: '16/9' },
       ];
       TOPICS[ti] = t;
       return { ...s, TOPICS };
@@ -621,6 +624,7 @@ export function ContentProvider({ children }) {
             director_note: p.directorNote || '',
             credits: Array.isArray(p.credits) && p.credits.length > 0 ? p.credits : [],
             release_url: p.releaseUrl || '',
+            video_aspect_ratio: p.videoAspectRatio || '16/9',
             order_index: pi,
             updated_at: now,
           });
@@ -718,6 +722,7 @@ export function ContentProvider({ children }) {
           directorNote: p.directorNote || '',
           credits: Array.isArray(p.credits) ? p.credits : [],
           releaseUrl: p.releaseUrl || '',
+          videoAspectRatio: p.videoAspectRatio || '16/9',
         })),
       };
     });
