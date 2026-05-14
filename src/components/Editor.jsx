@@ -29,6 +29,7 @@ import TypographySection from './TypographySection';
 import ImageUploader from './ImageUploader';
 import VideoUploader from './VideoUploader';
 import AssetManagerSection from './AssetManagerSection';
+import AssetPicker from './AssetPicker';
 import TheatreAlpha from './TheatreAlpha';
 import { Clapperboard } from 'lucide-react';
 
@@ -136,7 +137,7 @@ export default function Editor({ open, onClose }) {
     }
   };
 
-  const handleSave = () => doSave();
+  const handleSave = doSave;
 
   // Unlocked = Supabase session present (real auth) OR Supabase isn't
   // configured at all (dev / preview without env vars — drawer opens freely
@@ -1121,6 +1122,12 @@ function ProjectRow({
             onChange={(v) => updateProject(ti, pi, { url: v })}
             compact
           />
+          <AssetPicker
+            kind="video"
+            value={p.url}
+            onPick={(url) => updateProject(ti, pi, { url })}
+            compact
+          />
           <Field
             label="Custom image URL (optional — YouTube auto-derives)"
             value={p.image}
@@ -1230,32 +1237,35 @@ function ExportModal({ open, onClose, source }) {
 // ("Content") and the Theatre Alpha studio module. Theatre Alpha gets a
 // subtle cinematic glow so it visually invites discovery.
 // ---------------------------------------------------------------------------
+// Hoisted outside EditorTabs so React sees a stable component identity
+// across re-renders — avoids remounting the button on every state change.
+function EditorTab({ id, view, onChange, glow, children }) {
+  const active = view === id;
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(id)}
+      className={[
+        'relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] tracking-widest2 uppercase transition-colors',
+        active
+          ? 'bg-white/10 border-white/30 text-white'
+          : 'border-white/10 text-white/55 hover:text-white hover:border-white/30',
+        glow ? 'ta-tab-glow' : '',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  );
+}
+
 function EditorTabs({ view, onChange }) {
-  const Tab = ({ id, children, glow }) => {
-    const active = view === id;
-    return (
-      <button
-        type="button"
-        onClick={() => onChange(id)}
-        className={[
-          'relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] tracking-widest2 uppercase transition-colors',
-          active
-            ? 'bg-white/10 border-white/30 text-white'
-            : 'border-white/10 text-white/55 hover:text-white hover:border-white/30',
-          glow ? 'ta-tab-glow' : '',
-        ].join(' ')}
-      >
-        {children}
-      </button>
-    );
-  };
   return (
     <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10">
-      <Tab id="content">Content</Tab>
-      <Tab id="theatre" glow>
+      <EditorTab id="content" view={view} onChange={onChange}>Content</EditorTab>
+      <EditorTab id="theatre" view={view} onChange={onChange} glow>
         <Clapperboard className="w-3.5 h-3.5" />
         Theatre Alpha
-      </Tab>
+      </EditorTab>
       <style>{`
         @keyframes ta-pulse-glow {
           0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.0), 0 0 0 0 rgba(245,158,11,0.0); border-color: rgba(245,158,11,0.55); }
@@ -1509,18 +1519,21 @@ function CropPicker({ src, position, onChange }) {
   useEffect(() => {
     if (!dragging) return;
     const onMove = (e) => setFromEvent(e.clientX, e.clientY);
+    const onTouchMove = (e) => {
+      if (e.touches[0]) setFromEvent(e.touches[0].clientX, e.touches[0].clientY);
+    };
     const onUp = () => setDragging(false);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', (e) => {
-      if (e.touches[0]) setFromEvent(e.touches[0].clientX, e.touches[0].clientY);
-    }, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
     window.addEventListener('touchend', onUp);
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onUp);
     };
-  }, [dragging]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dragging]); // setFromEvent is stable (closes over ref only)
 
   if (!src) {
     return (

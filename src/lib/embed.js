@@ -46,6 +46,21 @@ export function resolveEmbed(url) {
     };
   }
 
+  // Backblaze B2 direct video files — and any other direct .mp4 / .webm /
+  // .mov / .m4v URL. These are served as raw files, not embed pages, so we
+  // use a native <video> element (no iframe, no CSP frame-src issue).
+  const isDirectVideo =
+    /backblazeb2\.com/.test(url) ||
+    /\.(?:mp4|webm|mov|m4v|ogg)(\?|#|$)/i.test(url);
+  if (isDirectVideo) {
+    return {
+      kind: 'direct',
+      embedUrl: url,
+      aspect: '16/9',
+      originalUrl: url,
+    };
+  }
+
   return { kind: 'unknown', embedUrl: url, aspect: '16/9', originalUrl: url };
 }
 

@@ -79,11 +79,10 @@ export default function VideoModal({ project, onClose }) {
           <motion.div
             key="player"
             // Entry: slide up from bottom + start blurred, become sharp.
-            initial={{ opacity: 0, y: 120, filter: 'blur(24px)' }}
+            initial={{ opacity: 0, y: 120, }}
             animate={{
               opacity: 1,
               y: 0,
-              filter: 'blur(0px)',
               transition: {
                 y: { type: 'spring', stiffness: 160, damping: 22, mass: 0.9 },
                 opacity: { duration: 0.4, ease: 'easeOut' },
@@ -128,6 +127,30 @@ export default function VideoModal({ project, onClose }) {
 }
 
 function PlayerFrame({ info, title }) {
+  // Direct video files (Backblaze B2, raw .mp4/.webm) — native <video>
+  // element so there's no iframe and no CSP frame-src restriction.
+  if (info.kind === 'direct') {
+    return (
+      <div
+        className="mx-auto rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 bg-black"
+        style={{
+          aspectRatio: '16 / 9',
+          width: 'min(100%, calc(85vh * 16 / 9))',
+        }}
+      >
+        <video
+          src={info.embedUrl}
+          title={title}
+          autoPlay
+          controls
+          playsInline
+          loop
+          className="w-full h-full object-contain"
+        />
+      </div>
+    );
+  }
+
   // Instagram's embed iframe ships its own chrome + caption, so we give it a
   // taller / narrower frame and a dark card. YouTube / Vimeo run at 16:9.
   if (info.kind === 'instagram') {
