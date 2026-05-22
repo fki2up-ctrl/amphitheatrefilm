@@ -96,6 +96,17 @@ export default function App() {
   const [openProject, setOpenProject] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
+  // Opening a project from the Landing page:
+  // 1. Navigate to gallery first (triggers Landing's cinematic exit animation).
+  // 2. After the Landing exit + gallery entrance (~1.3 s total), open the modal.
+  const handleOpenFromLanding = useCallback(
+    (project) => {
+      openCategory(CATEGORY_ALL);
+      setTimeout(() => setOpenProject(project), 1350);
+    },
+    [openCategory]
+  );
+
   // --- Active highlight ----------------------------------------------------
   // Observe every project card; derive the active category from that.
   const projectIds = useMemo(() => ALL_PROJECTS.map((p) => p.id), [ALL_PROJECTS]);
@@ -214,7 +225,7 @@ export default function App() {
         {phase === 'intro' && (
           <Intro key="intro" onComplete={handleIntroComplete} />
         )}
-        {phase === 'landing' && <Landing key="landing" onOpen={setOpenProject} />}
+        {phase === 'landing' && <Landing key="landing" onOpen={handleOpenFromLanding} />}
       </AnimatePresence>
 
       <SpeedInsights />
