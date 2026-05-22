@@ -2238,7 +2238,7 @@ function ExportModal({ open, onClose, source }) {
 // across re-renders — avoids remounting the button on every state change.
 function EditorTab({ id, view, onChange, glow, children }) {
   const active = view === id;
-  const glowClass = glow === 'amber' ? 'ta-tab-glow' : glow === 'white' ? 'proj-tab-glow' : '';
+  const glowClass = glow === 'amber' ? 'ta-tab-glow' : glow === 'white' ? 'proj-tab-glow' : glow === 'red' ? 'assets-tab-glow' : glow === 'sky' ? 'design-tab-glow' : '';
   return (
     <button
       type="button"
@@ -2266,8 +2266,8 @@ function EditorTabs({ view, onChange }) {
         <Clapperboard className="w-3.5 h-3.5" />
         AlphaPROD.
       </EditorTab>
-      <EditorTab id="content" view={view} onChange={onChange}>Design</EditorTab>
-      <EditorTab id="assets" view={view} onChange={onChange}>
+      <EditorTab id="content" view={view} onChange={onChange} glow="sky">Design</EditorTab>
+      <EditorTab id="assets" view={view} onChange={onChange} glow="red">
         <FolderOpen className="w-3.5 h-3.5" />
         Asset Library
       </EditorTab>
@@ -2291,6 +2291,26 @@ function EditorTabs({ view, onChange }) {
           color: rgba(245,158,11,0.95);
         }
         .ta-tab-glow:hover { color: #fff; }
+
+        @keyframes assets-pulse-glow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.0), 0 0 0 0 rgba(239,68,68,0.0); border-color: rgba(239,68,68,0.35); }
+          50%      { box-shadow: 0 0 14px 2px rgba(239,68,68,0.40), 0 0 28px 4px rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.85); }
+        }
+        .assets-tab-glow {
+          animation: assets-pulse-glow 2.4s ease-in-out infinite;
+          color: rgba(239,68,68,0.90);
+        }
+        .assets-tab-glow:hover { color: #fff; }
+
+        @keyframes design-pulse-glow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.0), 0 0 0 0 rgba(56,189,248,0.0); border-color: rgba(56,189,248,0.35); }
+          50%      { box-shadow: 0 0 14px 2px rgba(56,189,248,0.40), 0 0 28px 4px rgba(56,189,248,0.15); border-color: rgba(56,189,248,0.85); }
+        }
+        .design-tab-glow {
+          animation: design-pulse-glow 2.4s ease-in-out infinite;
+          color: rgba(56,189,248,0.90);
+        }
+        .design-tab-glow:hover { color: #fff; }
       `}</style>
     </div>
   );
