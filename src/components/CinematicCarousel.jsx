@@ -36,6 +36,14 @@ const SIDE_W         = CENTER_W * SIDE_SCALE;
 const GAP            = 10;    // px gap between cards
 const DRAG_THRESHOLD = 45;    // px offset to trigger advance
 
+// Vertical alignment — side cards are shorter than the center card (same
+// aspect ratio, smaller width). This offset pushes them down so their
+// BOTTOM edge lines up with the bottom of the center card.
+const CARD_RATIO  = 4 / 5;   // must match the aspectRatio style below
+const CENTER_H    = Math.round(CENTER_W * CARD_RATIO);
+const SIDE_H      = Math.round(SIDE_W   * CARD_RATIO);
+const SIDE_TOP    = CENTER_H - SIDE_H;  // px — push side cards down
+
 // Offset of each slot (0 = center) relative to the center card's left edge.
 // Slots: -2, -1, 0, +1, +2
 function slotX(slot) {
@@ -69,7 +77,7 @@ function CarouselCard({ project, slot, onOpen }) {
       style={{
         position:   'absolute',
         left:       '50%',
-        top:        0,
+        top:        isCenter ? 0 : SIDE_TOP,
         width,
         x:          slotX(slot) - width / 2,
         opacity,
@@ -180,6 +188,9 @@ export default function CinematicCarousel({ onOpen }) {
   const [activeIdx, setActiveIdx]  = useState(0);
   const dragStartX                 = useRef(0);
   const isDragging                 = useRef(false);
+  // Real-time thumb offset applied to the entire track while dragging.
+  // Framer updates the DOM directly (no React re-render) for 60 fps feel.
+  const dragX = useMotionValue(0);
 
   if (!FAVORITES || FAVORITES.length === 0) return null;
 
@@ -198,20 +209,33 @@ export default function CinematicCarousel({ onOpen }) {
   const handlePointerDown = (e) => {
     dragStartX.current = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
     isDragging.current = false;
+    dragX.set(0);
   };
 
   const handlePointerMove = (e) => {
     const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-    if (Math.abs(x - dragStartX.current) > 8) isDragging.current = true;
+    const delta = x - dragStartX.current;
+    if (Math.abs(delta) > 8) {
+      isDragging.current = true;
+      // Apply slight rubber-band resistance beyond 1.5× threshold
+      const resistance = Math.abs(delta) > DRAG_THRESHOLD * 1.5
+        ? DRAG_THRESHOLD * 1.5 + (Math.abs(delta) - DRAG_THRESHOLD * 1.5) * 0.25
+        : Math.abs(delta);
+      dragX.set(delta < 0 ? -resistance : resistance);
+    }
   };
 
   const handlePointerUp = (e) => {
-    if (!isDragging.current) return;
-    const x     = e.clientX ?? e.changedTouches?.[0]?.clientX ?? 0;
-    const delta = x - dragStartX.current;
-    if (delta < -DRAG_THRESHOLD) goTo(safeIdx + 1);
-    else if (delta > DRAG_THRESHOLD) goTo(safeIdx - 1);
+    const val = dragX.get();
+    if (!isDragging.current) {
+      dragX.set(0);
+      return;
+    }
     isDragging.current = false;
+    if (val < -DRAG_THRESHOLD) goTo(safeIdx + 1);
+    else if (val > DRAG_THRESHOLD) goTo(safeIdx - 1);
+    // Spring back to resting position — fast enough to feel snappy
+    animate(dragX, 0, { type: 'spring', stiffness: 600, damping: 45 });
   };
 
   const handleCardClick = (slot, project) => {
@@ -232,10 +256,10 @@ export default function CinematicCarousel({ onOpen }) {
 
   return (
     <div className="w-full flex flex-col items-center gap-3 select-none">
-      {/* ── track (overflow-visible so full-height 9:16 cards are never clipped) ── */}
-      <div
+      {/* ── track — motion.div so dragX shifts all cards together in real-time ── */}
+      <motion.div
         className="relative w-full"
-        style={{ height: trackH, overflow: 'visible' }}
+        style={{ height: trackH, overflow: 'visible', x: dragX, touchAction: 'pan-y' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -260,7 +284,7 @@ export default function CinematicCarousel({ onOpen }) {
             </div>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Screen-edge fades — outside the track so they're not clipped */}
       <div
