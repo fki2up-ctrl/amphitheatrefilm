@@ -52,6 +52,7 @@ alter table public.projects add column if not exists director_note text default 
 alter table public.projects add column if not exists credits       jsonb default '[]'::jsonb;
 alter table public.projects add column if not exists release_url   text default '';
 alter table public.projects add column if not exists video_aspect_ratio text default '16/9';
+alter table public.projects add column if not exists is_favorite boolean default false;
 
 create index if not exists projects_topic_order_idx
   on public.projects (topic_id, order_index);

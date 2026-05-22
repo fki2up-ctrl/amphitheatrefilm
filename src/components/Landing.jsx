@@ -19,6 +19,7 @@ import { motion } from 'framer-motion';
 import { useContent } from '../store/content';
 import { usePhase, CATEGORY_ALL } from '../flow/PhaseProvider';
 import BackgroundVideo from './BackgroundVideo';
+import CinematicCarousel from './CinematicCarousel';
 
 // Shared layoutId constants — Intro.PhaseTwo writes the same values so
 // Framer can interpolate position/size during the Intro → Landing handoff.
@@ -40,7 +41,7 @@ const MENU_STEP       = 0.09;
 // set in the editor yet. Editable via the Editor → Featured Video panel.
 const DEFAULT_LANDING_VIDEO = 'https://youtu.be/ViB1YJVlIFk';
 
-export default function Landing() {
+export default function Landing({ onOpen }) {
   const { PROFILE, CATEGORIES } = useContent();
   const { openCategory } = usePhase();
 
@@ -77,12 +78,10 @@ export default function Landing() {
       }}
       style={{ transformOrigin: 'center center' }}
     >
-      {/* 1. Background video — z-0. Starts at opacity 0, fades to 1 when
-             react-player reports `onReady`. */}
+      {/* 1. Background video — z-0. */}
       <BackgroundVideo url={videoUrl} />
 
-      {/* 2. Dark gradient overlay — transparent at top, deep blue-black at
-             the bottom. Keeps the menu + brand legible over bright footage. */}
+      {/* 2. Dark gradient overlay */}
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
@@ -91,6 +90,22 @@ export default function Landing() {
             'linear-gradient(to bottom, rgba(5,10,25,0) 0%, rgba(5,10,25,0) 45%, rgba(5,10,25,0.25) 72%, rgba(5,10,25,0.4) 100%)',
         }}
       />
+
+      {/* 3. Cinematic project carousel — centered between the video and the
+             bottom brand/nav stack on all screen sizes. pointer-events-none
+             on the wrapper lets touches fall through to the background; the
+             inner container restores pointer-events for card interaction. */}
+      {/* Carousel anchored by bottom so its base sits just above "Film Natthawut".
+           The brand stack is at bottom-8 (32px) with ~120px content height, so
+           bottom: 160px places the carousel right above it with a small gap.
+           No `top` constraint — the carousel grows upward from this anchor. */}
+      <div className="absolute inset-x-0 pointer-events-none"
+        style={{ bottom: '275px', overflow: 'visible' }}
+      >
+        <div className="w-full pointer-events-auto">
+          <CinematicCarousel onOpen={onOpen} />
+        </div>
+      </div>
 
       {/* 3 + 4. Bottom stack — brand name, role, and category menu share a
              single flex-column container anchored near the lower third of
@@ -147,12 +162,12 @@ export default function Landing() {
                     group relative inline-flex items-center
                     px-1 py-1.5
                     text-white/85 hover:text-white
-                    text-[clamp(0.7rem,1vw,0.85rem)]
                     tracking-[0.12em]
                     font-medium
                     transition-colors duration-300
                     focus:outline-none focus-visible:text-white
                   "
+                  style={{ fontSize: 'var(--site-topic-menu-size, 12px)' }}
                 >
                   <span className="relative z-10 whitespace-nowrap">
                     {item.label}

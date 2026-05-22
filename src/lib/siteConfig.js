@@ -26,6 +26,7 @@ export const DEFAULT_SITE_CONFIG = {
     topicSize: 56,      // px, big category title in GalleryHeader (applied
                         // on every breakpoint so mobile reflects editor
                         // changes; prior value matched desktop text-6xl).
+    topicMenuSize: 12,  // px, topics/categories menus (pills/landing links)
     bodySize:  16,      // px, base body size
   },
   animations: {
@@ -56,6 +57,7 @@ export function applySiteConfigToRoot(cfg) {
   r.setProperty('--site-card-gap',         `${cfg.layout.cardGap}px`);
   r.setProperty('--site-content-pr',       `${cfg.layout.contentPaddingRight}px`);
   r.setProperty('--site-topic-size',    `${cfg.typography.topicSize}px`);
+  r.setProperty('--site-topic-menu-size',`${cfg.typography.topicMenuSize || 12}px`);
   r.setProperty('--site-body-size',     `${cfg.typography.bodySize}px`);
   r.setProperty('--site-intro-speed',   String(cfg.animations.introSpeed));
 }

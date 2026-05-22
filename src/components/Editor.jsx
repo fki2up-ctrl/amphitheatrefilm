@@ -23,6 +23,7 @@ import {
   Loader2,
   Film,
   Sliders,
+  Star,
 } from 'lucide-react';
 import { useContent, serializeToProjectsJs, saveProjectsJs } from '../store/content';
 import { optimizeCloudinaryUrl, isCloudinaryUrl } from '../utils/cloudinary';
@@ -555,6 +556,15 @@ function SiteConfigSection({ c }) {
                 step={1}
               />
               <PremiumSlider
+                label="Topic menu/pill size"
+                value={siteConfig.typography.topicMenuSize || 12}
+                suffix="px"
+                onChange={(v) => setSiteConfig({ typography: { topicMenuSize: Math.round(v) } })}
+                min={9}
+                max={20}
+                step={1}
+              />
+              <PremiumSlider
                 label="Body base size"
                 value={siteConfig.typography.bodySize}
                 suffix="px"
@@ -953,6 +963,7 @@ function ProjectsView({ c }) {
   const {
     state, addTopic, updateTopic, removeTopic, moveTopic,
     addProject, updateProject, removeProject, moveProject, moveProjectTo,
+    toggleFavorite,
   } = c;
 
   // Col-1: selected topic (null = ALL)
@@ -974,13 +985,19 @@ function ProjectsView({ c }) {
 
   // Flat project list for col 2
   const listEntries =
-    activeTi === null
+    activeTi === 'favorites'
       ? state.TOPICS.flatMap((t, ti) =>
-        t.projects.map((p, pi) => ({ p, ti, pi, topicLabel: t.label }))
-      )
+          t.projects
+            .map((p, pi) => ({ p, ti, pi, topicLabel: t.label }))
+            .filter((e) => e.p.is_favorite)
+        )
+      : activeTi === null
+      ? state.TOPICS.flatMap((t, ti) =>
+          t.projects.map((p, pi) => ({ p, ti, pi, topicLabel: t.label }))
+        )
       : (state.TOPICS[activeTi]?.projects ?? []).map((p, pi) => ({
-        p, ti: activeTi, pi, topicLabel: state.TOPICS[activeTi]?.label,
-      }));
+          p, ti: activeTi, pi, topicLabel: state.TOPICS[activeTi]?.label,
+        }));
 
   // Selected project data (live from store)
   const selP = sel && state.TOPICS[sel.ti]?.projects[sel.pi]
@@ -1037,8 +1054,9 @@ function ProjectsView({ c }) {
   };
 
   const topicItems = [
-    { label: 'ALL', ti: null, count: state.TOPICS.reduce((n, t) => n + t.projects.length, 0) },
-    ...state.TOPICS.map((t, ti) => ({ label: t.label || 'Untitled', ti, count: t.projects.length })),
+    { label: 'ALL', ti: null, count: state.TOPICS.reduce((n, t) => n + t.projects.length, 0), isFavTopic: false },
+    { label: 'FAVORITES', ti: 'favorites', count: state.TOPICS.reduce((n, t) => n + t.projects.filter(p => p.is_favorite).length, 0), isFavTopic: true },
+    ...state.TOPICS.map((t, ti) => ({ label: t.label || 'Untitled', ti, count: t.projects.length, isFavTopic: false })),
   ];
 
   return (
@@ -1048,14 +1066,15 @@ function ProjectsView({ c }) {
       <div className="flex flex-col" style={{ width: '20%', minWidth: 160, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
         <ColHeader>TOPICS</ColHeader>
         <div className="flex-1 overflow-y-auto py-2 px-2" style={{ scrollbarWidth: 'none' }}>
-          {topicItems.map(({ label, ti, count }, idx) => {
+          {topicItems.map(({ label, ti, count, isFavTopic }, idx) => {
             const active = activeTi === ti;
             const isAll = ti === null;
+            const isFav = isFavTopic;
             return (
               <div
                 key={ti ?? 'all'}
                 className="relative group"
-                draggable={!isAll}
+                draggable={!isAll && !isFav}
                 onDragStart={(e) => handleTopicDragStart(e, idx)}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -1073,6 +1092,10 @@ function ProjectsView({ c }) {
                 {/* Separator between ALL and real topics */}
                 {idx === 1 && (
                   <div className="mx-2 my-1.5 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+                )}
+                {/* Separator between FAVORITES and real topics */}
+                {idx === 2 && (
+                  <div className="mx-2 my-1.5 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
                 )}
                 {active && (
                   <motion.div
@@ -1092,19 +1115,24 @@ function ProjectsView({ c }) {
                     onClick={() => { setActiveTi(ti); setSel(null); }}
                     className={[
                       'relative flex-1 text-left px-3 py-3 rounded-lg flex items-center gap-2.5 transition-all duration-200',
-                      active ? 'text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.03]',
+                      active
+                        ? isFav ? 'text-amber-300' : 'text-white'
+                        : isFav ? 'text-amber-500/60 hover:text-amber-300' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.03]',
                     ].join(' ')}
                   >
                     {/* Left accent bar */}
                     <span className={[
                       'w-0.5 h-5 rounded-full shrink-0 transition-all duration-300',
-                      active ? 'bg-white/60' : 'bg-white/0',
+                      active ? (isFav ? 'bg-amber-400/80' : 'bg-white/60') : 'bg-white/0',
                     ].join(' ')} />
                     <span className="flex-1 min-w-0 pr-6">
                       <span className={[
-                        'block truncate text-[11px] tracking-widest uppercase transition-colors',
+                        'flex items-center gap-1.5 truncate text-[11px] tracking-widest uppercase transition-colors',
                         isAll ? 'font-semibold' : 'font-medium',
                       ].join(' ')}>
+                        {isFav && (
+                          <Star className={`w-3 h-3 shrink-0 ${active ? 'fill-amber-400 text-amber-400' : 'fill-amber-500/50 text-amber-500/50'}`} />
+                        )}
                         {label}
                       </span>
                       <span className="block text-[9px] mt-0.5 text-white/20 normal-case tracking-normal">
@@ -1113,7 +1141,7 @@ function ProjectsView({ c }) {
                     </span>
                   </button>
 
-                  {!isAll && (
+                  {!isAll && !isFav && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1204,14 +1232,36 @@ function ProjectsView({ c }) {
                       ? <img src={thumb} alt="" className="w-full h-full object-cover" />
                       : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-white/10" /></div>}
                   </div>
-                  <div className="flex-1 min-w-0 pr-6">
+                  <div className="flex-1 min-w-0 pr-14">
                     <p className={[
                       'text-[12px] truncate leading-tight transition-colors',
                       isSelected ? 'text-white' : 'text-white/80',
                     ].join(' ')}>{p.title || <span className="text-white/25 italic">Untitled</span>}</p>
                     <p className="text-[10px] text-white/25 truncate mt-0.5">{p.subtitle || topicLabel}</p>
                   </div>
-                  {activeTi !== null && <GripVertical className="w-3.5 h-3.5 text-white/10 shrink-0 opacity-0 group-hover:opacity-100" />}
+                  {activeTi !== null && activeTi !== 'favorites' && <GripVertical className="w-3.5 h-3.5 text-white/10 shrink-0 opacity-0 group-hover:opacity-100" />}
+
+                  {/* Star / Favorite toggle */}
+                  <motion.button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(ti, pi);
+                    }}
+                    whileTap={{ scale: 1.5 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    className={[
+                      'absolute right-9 top-1/2 -translate-y-1/2 p-1.5 rounded transition-all duration-200 opacity-0 group-hover:opacity-100',
+                      p.is_favorite
+                        ? 'text-amber-400 opacity-100'
+                        : 'text-white/20 hover:text-amber-300',
+                    ].join(' ')}
+                    title={p.is_favorite ? 'Unpin from Favorites' : 'Pin to Favorites'}
+                  >
+                    <Star
+                      className="w-3.5 h-3.5"
+                      fill={p.is_favorite ? 'currentColor' : 'none'}
+                    />
+                  </motion.button>
 
                   <button
                     onClick={(e) => {

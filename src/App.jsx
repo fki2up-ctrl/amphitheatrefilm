@@ -214,7 +214,7 @@ export default function App() {
         {phase === 'intro' && (
           <Intro key="intro" onComplete={handleIntroComplete} />
         )}
-        {phase === 'landing' && <Landing key="landing" />}
+        {phase === 'landing' && <Landing key="landing" onOpen={setOpenProject} />}
       </AnimatePresence>
 
       <SpeedInsights />

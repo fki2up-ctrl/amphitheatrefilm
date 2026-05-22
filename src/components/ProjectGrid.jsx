@@ -42,13 +42,13 @@ export default function ProjectGrid({ onOpen, filterCategoryId }) {
               className="flex items-end justify-between gap-6 mb-8 sm:mb-10"
             >
               <div>
-                <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl leading-tight">
+                <h2
+                  className="font-display leading-tight"
+                  style={{ fontSize: 'calc(var(--site-topic-size, 56px) * 0.8)' }}
+                >
                   {cat.label}
                 </h2>
               </div>
-              <span className="hidden sm:block text-xs text-white/40 pb-1">
-                {cat.projects.length} works
-              </span>
             </motion.header>
           )}
 

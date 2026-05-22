@@ -167,6 +167,7 @@ function buildInitial() {
         credits: Array.isArray(p.credits) ? p.credits : [],
         releaseUrl: p.releaseUrl ?? '',
         videoAspectRatio: p.videoAspectRatio ?? '16/9',
+        is_favorite: false,
       })),
     })),
   };
@@ -197,6 +198,7 @@ function loadStored() {
         credits: Array.isArray(p.credits) ? p.credits : [],
         releaseUrl: p.releaseUrl ?? '',
         videoAspectRatio: p.videoAspectRatio ?? '16/9',
+        is_favorite: p.is_favorite ?? false,
       })),
     }));
     return {
@@ -354,7 +356,7 @@ export function ContentProvider({ children }) {
             .order('order_index', { ascending: true }),
           supabase
             .from('projects')
-            .select('id, topic_id, title, subtitle, url, image, image_position, order_index, director_note, credits, release_url, video_aspect_ratio')
+            .select('id, topic_id, title, subtitle, url, image, image_position, order_index, director_note, credits, release_url, video_aspect_ratio, is_favorite')
             .order('order_index', { ascending: true }),
           supabase
             .from('site_settings')
@@ -409,6 +411,7 @@ export function ContentProvider({ children }) {
             credits: Array.isArray(p.credits) ? p.credits : [],
             releaseUrl: p.release_url || '',
             videoAspectRatio: p.video_aspect_ratio || '16/9',
+            is_favorite: p.is_favorite ?? false,
           })),
         }));
 
@@ -625,6 +628,7 @@ export function ContentProvider({ children }) {
             credits: Array.isArray(p.credits) && p.credits.length > 0 ? p.credits : [],
             release_url: p.releaseUrl || '',
             video_aspect_ratio: p.videoAspectRatio || '16/9',
+            is_favorite: p.is_favorite ?? false,
             order_index: pi,
             updated_at: now,
           });
@@ -678,6 +682,32 @@ export function ContentProvider({ children }) {
     }
   }, [state]);
 
+  // Toggle the `is_favorite` boolean on a single project and fire an
+  // optimistic Supabase upsert in the background (non-blocking, silent
+  // on error — local state is authoritative).
+  const toggleFavorite = useCallback((ti, pi) => {
+    setState((s) => {
+      const TOPICS = [...s.TOPICS];
+      const t = { ...TOPICS[ti] };
+      t.projects = [...t.projects];
+      const p = { ...t.projects[pi] };
+      p.is_favorite = !p.is_favorite;
+      t.projects[pi] = p;
+      TOPICS[ti] = t;
+      // Optimistic cloud update — best-effort, no spinner.
+      if (hasSupabase && supabase) {
+        supabase
+          .from('projects')
+          .update({ is_favorite: p.is_favorite, updated_at: new Date().toISOString() })
+          .eq('id', p.id)
+          .then(({ error }) => {
+            if (error) console.warn('[supabase] toggleFavorite failed:', error.message);
+          });
+      }
+      return { ...s, TOPICS };
+    });
+  }, []);
+
   // Move a project to any (topic, index). Powers drag-and-drop reordering
   // across topics. `dstPi` is the index BEFORE which the project will land,
   // measured in the destination topic's *current* projects list.
@@ -714,6 +744,8 @@ export function ContentProvider({ children }) {
         label: t.label,
         projects: t.projects.map((p, pi) => ({
           id: `${id}-${pi + 1}`,
+          // Keep the raw store id too so toggleFavorite can look it up.
+          _storeId: p.id,
           title: p.title,
           subtitle: p.subtitle,
           url: p.url,
@@ -723,6 +755,10 @@ export function ContentProvider({ children }) {
           credits: Array.isArray(p.credits) ? p.credits : [],
           releaseUrl: p.releaseUrl || '',
           videoAspectRatio: p.videoAspectRatio || '16/9',
+          is_favorite: p.is_favorite ?? false,
+          // Store indices for editor mutations
+          _ti: ti,
+          _pi: pi,
         })),
       };
     });
@@ -730,6 +766,7 @@ export function ContentProvider({ children }) {
     const ALL_PROJECTS = TOPICS.flatMap((c) =>
       c.projects.map((p) => ({ ...p, categoryId: c.id, categoryLabel: c.label }))
     );
+    const FAVORITES = ALL_PROJECTS.filter((p) => p.is_favorite);
     const BRAND = {
       name:    state.PROFILE.name,
       role:    state.PROFILE.role,
@@ -746,7 +783,7 @@ export function ContentProvider({ children }) {
       headerImageShape: 'square',
       background: state.BACKGROUND,
     };
-    return { BRAND, SITE_ASSETS, CATEGORIES, TOPICS, ALL_PROJECTS };
+    return { BRAND, SITE_ASSETS, CATEGORIES, TOPICS, ALL_PROJECTS, FAVORITES };
   }, [state]);
 
   const value = {
@@ -764,6 +801,7 @@ export function ContentProvider({ children }) {
     removeProject,
     moveProject,
     moveProjectTo,
+    toggleFavorite,
     reset,
     // typography
     fontSettings,

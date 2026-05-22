@@ -114,13 +114,14 @@ export default function FloatingCategoryBar() {
                       aria-pressed={active}
                       className={`
                         inline-flex items-center px-4 py-2 whitespace-nowrap
-                        text-xs tracking-[0.18em] uppercase
+                        tracking-[0.18em] uppercase
                         rounded-full border transition-all duration-300
                         focus:outline-none focus-visible:ring-1 focus-visible:ring-white/60
                         ${active
                           ? 'border-white/70 bg-white/10 text-white'
                           : 'border-white/15 text-white/65 hover:text-white hover:border-white/40'}
                       `}
+                      style={{ fontSize: 'var(--site-topic-menu-size, 12px)' }}
                     >
                       {p.label}
                     </button>

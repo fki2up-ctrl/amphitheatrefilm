@@ -30,10 +30,8 @@ export default function GalleryHeader() {
     selectedCategory === CATEGORY_ALL
       ? null
       : CATEGORIES.find((c) => c.id === selectedCategory);
-  const title = activeCategory ? activeCategory.label : 'Portfolio';
-  const subtitle = activeCategory
-    ? `${activeCategory.projects.length} works`
-    : `${CATEGORIES.reduce((n, c) => n + c.projects.length, 0)} works · all categories`;
+  const title = activeCategory ? activeCategory.label : '';
+  const subtitle = '';
 
   // Pills for swapping categories from inside the gallery. "All" first,
   // then each topic.
@@ -47,28 +45,32 @@ export default function GalleryHeader() {
       {/* Big category title — slides in from the top with a slight delay so
           it lands AFTER the gallery fades in (which itself is delayed from
           Landing's dive-in). */}
-      <motion.div
-        initial={{ opacity: 0, y: -32 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9, ease: TITLE_EASE, delay: 0.25 }}
-        className="flex items-end justify-between gap-6 flex-wrap"
-      >
-        <div>
-          <motion.h1
-            key={title /* re-animate when switching categories */}
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="font-display leading-[1.05] tracking-tight"
-            style={{ fontSize: 'var(--site-topic-size, 60px)' }}
-          >
-            {title}
-          </motion.h1>
-          <p className="mt-2 text-[11px] sm:text-xs text-white/45 tracking-widest2 uppercase">
-            {subtitle}
-          </p>
-        </div>
-      </motion.div>
+      {title && (
+        <motion.div
+          initial={{ opacity: 0, y: -32 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: TITLE_EASE, delay: 0.25 }}
+          className="flex items-end justify-between gap-6 flex-wrap"
+        >
+          <div>
+            <motion.h1
+              key={title /* re-animate when switching categories */}
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="font-display leading-[1.05] tracking-tight"
+              style={{ fontSize: 'var(--site-topic-size, 60px)' }}
+            >
+              {title}
+            </motion.h1>
+            {subtitle && (
+              <p className="mt-2 text-[11px] sm:text-xs text-white/45 tracking-widest2 uppercase">
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       {/* Pill nav — single horizontal line, thumb-scrollable. Active pill
           smooth-scrolls into the viewport center on change. */}
@@ -124,13 +126,14 @@ function PillNav({ pills, selectedCategory, openCategory }) {
                 aria-pressed={active}
                 className={`
                   inline-flex items-center px-3.5 py-1.5 whitespace-nowrap
-                  text-[11px] sm:text-xs tracking-[0.14em] uppercase
+                  tracking-[0.14em] uppercase
                   rounded-full border transition-all duration-300
                   focus:outline-none focus-visible:ring-1 focus-visible:ring-white/60
                   ${active
                     ? 'border-white/60 bg-white/10 text-white scale-[1.04]'
                     : 'border-white/10 text-white/55 hover:text-white hover:border-white/30'}
                 `}
+                style={{ fontSize: 'var(--site-topic-menu-size, 12px)' }}
               >
                 {p.label}
               </button>

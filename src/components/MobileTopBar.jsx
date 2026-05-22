@@ -33,7 +33,6 @@ export default function MobileTopBar() {
     return () => ro.disconnect();
   }, []);
 
-  const photoHeight = Number(PROFILE.mobilePhotoHeight) || 180;
   const photoPosition = PROFILE.photoPosition || '50% 50%';
 
   return (
@@ -46,56 +45,46 @@ export default function MobileTopBar() {
       "
       style={{ paddingTop: 'max(env(safe-area-inset-top), 0px)' }}
     >
-      {/* Row 1 — portrait, full-width with fade-off mask into the bar */}
-      {SITE_ASSETS.headerImage && (
-        <div
-          className="relative w-full overflow-hidden bg-ink-800"
-          style={{
-            height: `${photoHeight}px`,
-            WebkitMaskImage:
-              'linear-gradient(to bottom, black 60%, transparent 100%)',
-            maskImage:
-              'linear-gradient(to bottom, black 60%, transparent 100%)',
-          }}
-        >
-          <img
-            src={SITE_ASSETS.headerImage}
-            alt={`${BRAND.name} — ${BRAND.role}`}
-            loading="lazy"
-            className="w-full h-full object-cover"
-            style={{ objectPosition: photoPosition }}
-          />
-        </div>
-      )}
+      <div className="flex items-center gap-3 px-4 py-3">
+        {/* Photo in 4:5 aspect ratio to left */}
+        {SITE_ASSETS.headerImage && (
+          <div className="w-12 h-[60px] aspect-[4/5] rounded-md overflow-hidden bg-ink-800 shrink-0 border border-white/10">
+            <img
+              src={SITE_ASSETS.headerImage}
+              alt={`${BRAND.name}`}
+              loading="lazy"
+              className="w-full h-full object-cover"
+              style={{ objectPosition: photoPosition }}
+            />
+          </div>
+        )}
 
-      {/* Row 2 — name + role · social icons */}
-      <div className="px-4 pb-3 pt-1">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0 leading-tight">
-            <div className="text-[22px] tracking-tight text-white truncate">
-              {BRAND.name}
+        {/* Name and role sitting to the right of the photo */}
+        <div className="flex-1 min-w-0 leading-tight">
+          <div className="text-base font-medium tracking-tight text-white truncate">
+            {BRAND.name}
+          </div>
+          {BRAND.role && (
+            <div className="mt-0.5 text-[11px] tracking-wide text-white/55 truncate">
+              {BRAND.role}
             </div>
-            {BRAND.role && (
-              <div className="mt-1 text-[12px] tracking-wide text-white/60 truncate">
-                {BRAND.role}
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <IconLink href={BRAND.socials.instagram} label="Instagram">
-              <Instagram className="w-3.5 h-3.5" />
-            </IconLink>
-            <IconLink href={BRAND.socials.facebook} label="Facebook">
-              <Facebook className="w-3.5 h-3.5" />
-            </IconLink>
-            <IconLink href={BRAND.email ? `mailto:${BRAND.email}` : null} label="Email">
-              <Mail className="w-3.5 h-3.5" />
-            </IconLink>
-            <IconLink href={BRAND.socials.linktree} label="Linktree">
-              <LinkIcon className="w-3.5 h-3.5" />
-            </IconLink>
-          </div>
+        {/* Sidebar buttons (Social icon links) sitting right to it */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <IconLink href={BRAND.socials.instagram} label="Instagram">
+            <Instagram className="w-3.5 h-3.5" />
+          </IconLink>
+          <IconLink href={BRAND.socials.facebook} label="Facebook">
+            <Facebook className="w-3.5 h-3.5" />
+          </IconLink>
+          <IconLink href={BRAND.email ? `mailto:${BRAND.email}` : null} label="Email">
+            <Mail className="w-3.5 h-3.5" />
+          </IconLink>
+          <IconLink href={BRAND.socials.linktree} label="Linktree">
+            <LinkIcon className="w-3.5 h-3.5" />
+          </IconLink>
         </div>
       </div>
     </header>

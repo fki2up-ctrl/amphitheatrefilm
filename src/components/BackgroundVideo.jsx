@@ -27,7 +27,7 @@ export default function BackgroundVideo({
         playsInline
         poster={poster}
         onLoadedData={onReady}
-        className="absolute top-0 left-0 w-full aspect-[4/5] object-cover object-center md:inset-0 md:w-full md:h-full md:aspect-auto"
+        className="absolute top-0 left-0 w-full aspect-[16/9] object-cover object-center md:inset-0 md:w-full md:h-full md:aspect-auto"
       >
         {mobileSrc && (
           <source media="(max-width: 767px)" src={mobileSrc} type="video/mp4" />
@@ -38,7 +38,7 @@ export default function BackgroundVideo({
       </video>
 
       <div
-        className="absolute top-0 left-0 w-full aspect-[4/5] bg-gradient-to-b from-transparent to-black pointer-events-none md:inset-0 md:w-full md:h-full md:aspect-auto"
+        className="absolute top-0 left-0 w-full aspect-[16/9] bg-gradient-to-b from-transparent to-black pointer-events-none md:inset-0 md:w-full md:h-full md:aspect-auto"
       />
     </div>
   );
