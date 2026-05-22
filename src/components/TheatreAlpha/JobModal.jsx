@@ -178,7 +178,7 @@ export default function JobModal({ open, job, defaultStart, onClose, onSave, onD
           <footer className="flex items-center gap-2 px-4 py-3 border-t border-white/10">
             {!isNew && (
               <button type="button" onClick={handleDelete} disabled={busy}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-red-500/40 text-red-300 hover:text-red-200 hover:border-red-500/70 text-xs disabled:opacity-50">
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-red-950/30 border border-red-500/30 text-red-400 hover:bg-red-900/60 hover:border-red-500/60 hover:text-red-200 hover:shadow-[0_0_12px_rgba(239,68,68,0.45)] active:scale-95 text-xs transition-all duration-200 disabled:opacity-50">
                 <Trash2 className="w-3.5 h-3.5" /> Delete
               </button>
             )}

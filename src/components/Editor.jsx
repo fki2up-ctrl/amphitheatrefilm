@@ -35,7 +35,7 @@ import AssetPicker from './AssetPicker';
 import TheatreAlpha from './TheatreAlpha';
 import CinematicPlayer from './CinematicPlayer';
 import { resolveEmbed } from '../lib/embed';
-import { Clapperboard } from 'lucide-react';
+import { Clapperboard, FolderOpen } from 'lucide-react';
 
 // Preview thumbnails in the editor sidebar are small; 400 px is ample even
 // at 2× DPR. `previewSrc` returns the optimized Cloudinary URL when possible,
@@ -214,13 +214,16 @@ export default function Editor({ open, onClose }) {
                   <div className="flex-1 min-h-0 overflow-hidden">
                     <ProjectsView c={c} />
                   </div>
+                ) : view === 'assets' ? (
+                  <div className="flex-1 min-h-0 overflow-y-auto pretty-scroll px-5 py-5">
+                    <AssetManagerSection standalone={true} />
+                  </div>
                 ) : (
                   <>
                     {/* Body — Content tab */}
                     <div className="flex-1 overflow-y-auto pretty-scroll px-5 py-5 space-y-8">
                       <TypographySection />
                       <SiteConfigSection c={c} />
-                      <AssetManagerSection />
                       <ProfileSection c={c} />
                       <LandingVideoSection c={c} />
                       <ContactSection c={c} />
@@ -949,7 +952,7 @@ const GHOST = [
 function ProjectsView({ c }) {
   const {
     state, addTopic, updateTopic, removeTopic, moveTopic,
-    addProject, updateProject, removeProject, moveProject,
+    addProject, updateProject, removeProject, moveProject, moveProjectTo,
   } = c;
 
   // Col-1: selected topic (null = ALL)
@@ -958,10 +961,16 @@ function ProjectsView({ c }) {
   const [sel, setSel] = useState(null); // { ti, pi }
   // Inspector media tab
   const [mediaTab, setMediaTab] = useState('thumb');
+  // Inspector form tab: 'details' | 'media' | 'credits'
+  const [inspectorTab, setInspectorTab] = useState('details');
   // Save state
   const [saving, setSaving] = useState(false);
   // Drag ref for col-2 reordering
   const dragRef = useRef(null);
+  // Drag over states for visual highlight
+  const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [topicDragOverIdx, setTopicDragOverIdx] = useState(null);
+  const topicDragRef = useRef(null);
 
   // Flat project list for col 2
   const listEntries =
@@ -986,13 +995,45 @@ function ProjectsView({ c }) {
     setSaving(false);
   };
 
-  const handleDragStart = (e, idx) => { dragRef.current = idx; e.dataTransfer.effectAllowed = 'move'; };
+  const handleDragStart = (e, idx) => {
+    dragRef.current = idx;
+    e.dataTransfer.effectAllowed = 'move';
+  };
   const handleDrop = (e, idx) => {
     e.preventDefault();
     const from = dragRef.current;
     if (from === null || from === idx || activeTi === null) return;
-    moveProject(activeTi, from, idx > from ? 1 : -1);
+    moveProjectTo(activeTi, from, activeTi, idx);
+    setSel({ ti: activeTi, pi: idx });
     dragRef.current = null;
+  };
+
+  const handleTopicDragStart = (e, idx) => {
+    topicDragRef.current = idx;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleTopicDrop = (e, idx) => {
+    e.preventDefault();
+    if (topicDragRef.current !== null) {
+      // Reordering topics
+      const from = topicDragRef.current;
+      if (from === idx || from === 0 || idx === 0) return; // 'ALL' is at index 0 and cannot be reordered or replaced
+      const fromStateIdx = from - 1;
+      const toStateIdx = idx - 1;
+      moveTopic(fromStateIdx, toStateIdx - fromStateIdx);
+      topicDragRef.current = null;
+    } else if (dragRef.current !== null && activeTi !== null) {
+      // Moving project to another topic
+      const fromPi = dragRef.current;
+      const srcTi = activeTi;
+      const dstTi = idx - 1; // Since 'ALL' is at index 0, real index in state.TOPICS is idx - 1
+      if (srcTi === dstTi) return;
+      const dstTopicProjectsCount = state.TOPICS[dstTi]?.projects.length ?? 0;
+      moveProjectTo(srcTi, fromPi, dstTi, dstTopicProjectsCount);
+      setActiveTi(dstTi);
+      setSel({ ti: dstTi, pi: dstTopicProjectsCount });
+      dragRef.current = null;
+    }
   };
 
   const topicItems = [
@@ -1004,277 +1045,464 @@ function ProjectsView({ c }) {
     <div className="flex h-full min-h-0 overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
 
       {/* ═══ COL 1 — TOPICS ═══════════════════════════════════════════════ */}
-      <div className="flex flex-col border-r border-white/8" style={{ width: '20%', minWidth: 140 }}>
+      <div className="flex flex-col" style={{ width: '20%', minWidth: 160, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
         <ColHeader>TOPICS</ColHeader>
-        <div className="flex-1 overflow-y-auto py-1" style={{ scrollbarWidth: 'none' }}>
-          {topicItems.map(({ label, ti, count }) => {
+        <div className="flex-1 overflow-y-auto py-2 px-2" style={{ scrollbarWidth: 'none' }}>
+          {topicItems.map(({ label, ti, count }, idx) => {
             const active = activeTi === ti;
+            const isAll = ti === null;
             return (
-              <div key={ti ?? 'all'} className="relative">
+              <div
+                key={ti ?? 'all'}
+                className="relative group"
+                draggable={!isAll}
+                onDragStart={(e) => handleTopicDragStart(e, idx)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (topicDragRef.current !== null || dragRef.current !== null) {
+                    setTopicDragOverIdx(idx);
+                  }
+                }}
+                onDragLeave={() => setTopicDragOverIdx(null)}
+                onDrop={(e) => {
+                  handleTopicDrop(e, idx);
+                  setTopicDragOverIdx(null);
+                }}
+                onDragEnd={() => setTopicDragOverIdx(null)}
+              >
+                {/* Separator between ALL and real topics */}
+                {idx === 1 && (
+                  <div className="mx-2 my-1.5 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+                )}
                 {active && (
                   <motion.div
                     layoutId="topic-pill"
-                    className="absolute inset-0 bg-white/8"
+                    className="absolute inset-0 rounded-lg bg-white/[0.06]"
                     initial={false}
                     transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+                    style={{ boxShadow: '0 0 12px rgba(255,255,255,0.03)' }}
                   />
                 )}
-                <button
-                  onClick={() => { setActiveTi(ti); setSel(null); }}
-                  className={[
-                    'relative w-full text-left px-4 py-2.5 text-[11px] tracking-widest uppercase transition-colors',
-                    active ? 'text-white' : 'text-white/40 hover:text-white/75',
-                  ].join(' ')}
-                >
-                  <span className="block truncate">{label}</span>
-                  <span className="block text-[9px] mt-0.5 text-white/25 normal-case tracking-normal">
-                    {count} {count === 1 ? 'project' : 'projects'}
-                  </span>
-                </button>
+                {/* Visual feedback drag over overlay */}
+                {topicDragOverIdx === idx && (
+                  <div className="absolute inset-0 rounded-lg border border-dashed border-white/35 bg-white/[0.05] pointer-events-none" />
+                )}
+                <div className="flex items-center w-full">
+                  <button
+                    onClick={() => { setActiveTi(ti); setSel(null); }}
+                    className={[
+                      'relative flex-1 text-left px-3 py-3 rounded-lg flex items-center gap-2.5 transition-all duration-200',
+                      active ? 'text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.03]',
+                    ].join(' ')}
+                  >
+                    {/* Left accent bar */}
+                    <span className={[
+                      'w-0.5 h-5 rounded-full shrink-0 transition-all duration-300',
+                      active ? 'bg-white/60' : 'bg-white/0',
+                    ].join(' ')} />
+                    <span className="flex-1 min-w-0 pr-6">
+                      <span className={[
+                        'block truncate text-[11px] tracking-widest uppercase transition-colors',
+                        isAll ? 'font-semibold' : 'font-medium',
+                      ].join(' ')}>
+                        {label}
+                      </span>
+                      <span className="block text-[9px] mt-0.5 text-white/20 normal-case tracking-normal">
+                        {count} {count === 1 ? 'project' : 'projects'}
+                      </span>
+                    </span>
+                  </button>
+
+                  {!isAll && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete "${label}" and all its projects? This cannot be undone.`)) {
+                          removeTopic(ti);
+                          if (activeTi === ti) setActiveTi(null);
+                          setSel(null);
+                        }
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-900/60 hover:border-red-500/60 hover:text-red-200 hover:shadow-[0_0_12px_rgba(239,68,68,0.45)] active:scale-95 transition-all duration-200"
+                      title="Delete Topic"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
-        </div>
-        <div className="p-3 border-t border-white/6">
-          <button
-            onClick={() => { addTopic(); setActiveTi(state.TOPICS.length); }}
-            className="w-full text-[10px] tracking-widest uppercase text-white/25 hover:text-white/65 py-2 transition-colors"
-          >
-            + New Topic
-          </button>
+          {/* Inline New Topic Button */}
+          <div className="mt-2 px-1 pb-4">
+            <button
+              onClick={() => { addTopic(); setActiveTi(state.TOPICS.length); }}
+              className="w-full py-2.5 rounded-lg flex items-center justify-center gap-2 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/20 text-white/70 hover:text-white text-[10px] tracking-widest uppercase font-medium shadow-[0_2px_8px_rgba(0,0,0,0.15)] active:scale-[0.98] transition-all duration-200"
+            >
+              <Plus className="w-3.5 h-3.5 text-white/50" />
+              <span>New Topic</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ═══ COL 2 — PROJECT LIST ══════════════════════════════════════════ */}
-      <div className="flex flex-col border-r border-white/8" style={{ width: '30%' }}>
+      <div className="flex flex-col" style={{ width: '30%', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
         <ColHeader>
           PROJECT LIST
           {activeTi !== null && (
-            <span className="ml-2 text-[9px] text-white/25 font-normal tracking-normal normal-case">
+            <span className="ml-2 text-[9px] text-white/20 font-normal tracking-normal normal-case">
               {state.TOPICS[activeTi]?.label}
             </span>
           )}
+          <span className="ml-auto px-1.5 py-0.5 rounded-full bg-white/[0.06] text-[9px] tabular-nums text-white/25">
+            {listEntries.length}
+          </span>
         </ColHeader>
 
-        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex-1 overflow-y-auto p-2 space-y-1" style={{ scrollbarWidth: 'none' }}>
           {listEntries.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-[11px] text-white/15 tracking-widest uppercase">
-              Empty
+            <div className="flex flex-col items-center justify-center h-32 gap-2">
+              <Film className="w-6 h-6 text-white/10" />
+              <p className="text-[11px] text-white/15 tracking-widest uppercase">No projects</p>
+              <p className="text-[10px] text-white/10 normal-case tracking-normal">Select a topic and add one</p>
             </div>
           ) : (
             listEntries.map(({ p, ti, pi, topicLabel }, idx) => {
               const isSelected = sel?.ti === ti && sel?.pi === pi;
-              const thumb = previewSrc(p.image || guessPreviewUrl(p.url), 80);
+              const thumb = previewSrc(p.image || guessPreviewUrl(p.url), 120);
               return (
                 <div
                   key={`${ti}-${pi}`}
                   draggable={activeTi !== null}
                   onDragStart={(e) => handleDragStart(e, idx)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => handleDrop(e, idx)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragRef.current !== null) {
+                      setDragOverIdx(idx);
+                    }
+                  }}
+                  onDragLeave={() => setDragOverIdx(null)}
+                  onDrop={(e) => {
+                    handleDrop(e, idx);
+                    setDragOverIdx(null);
+                  }}
+                  onDragEnd={() => setDragOverIdx(null)}
                   onClick={() => { setSel({ ti, pi }); setMediaTab('thumb'); }}
                   className={[
-                    'flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-white/4 transition-colors',
-                    isSelected ? 'bg-white/10' : 'hover:bg-white/5',
+                    'relative group flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg border transition-all duration-200',
+                    isSelected
+                      ? 'bg-white/[0.08] border-white/15 shadow-[0_0_12px_rgba(255,255,255,0.02)]'
+                      : 'border-transparent hover:bg-white/[0.04] hover:border-white/8 hover:-translate-y-[0.5px]',
+                    dragOverIdx === idx ? 'border-dashed border-white/40 bg-white/[0.08]' : '',
                   ].join(' ')}
                 >
-                  <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-white/5">
+                  {/* Left accent for selected */}
+                  {isSelected && <span className="w-0.5 self-stretch rounded-full bg-white/40 shrink-0" />}
+                  <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-white/[0.04] ring-1 ring-white/[0.06]">
                     {thumb
                       ? <img src={thumb} alt="" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-white/15" /></div>}
+                      : <div className="w-full h-full flex items-center justify-center"><Film className="w-4 h-4 text-white/10" /></div>}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] text-white/85 truncate leading-tight">{p.title || 'Untitled'}</p>
-                    <p className="text-[10px] text-white/30 truncate mt-0.5">{p.subtitle || topicLabel}</p>
+                  <div className="flex-1 min-w-0 pr-6">
+                    <p className={[
+                      'text-[12px] truncate leading-tight transition-colors',
+                      isSelected ? 'text-white' : 'text-white/80',
+                    ].join(' ')}>{p.title || <span className="text-white/25 italic">Untitled</span>}</p>
+                    <p className="text-[10px] text-white/25 truncate mt-0.5">{p.subtitle || topicLabel}</p>
                   </div>
-                  {activeTi !== null && <GripVertical className="w-3.5 h-3.5 text-white/12 shrink-0" />}
+                  {activeTi !== null && <GripVertical className="w-3.5 h-3.5 text-white/10 shrink-0 opacity-0 group-hover:opacity-100" />}
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Delete "${p.title || 'this project'}"? This cannot be undone.`)) {
+                        removeProject(ti, pi);
+                        if (sel?.ti === ti && sel?.pi === pi) setSel(null);
+                      }
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded bg-red-950/40 border border-red-500/30 text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-900/60 hover:border-red-500/60 hover:text-red-200 hover:shadow-[0_0_12px_rgba(239,68,68,0.45)] active:scale-95 transition-all duration-200"
+                    title="Delete Project"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               );
             })
           )}
+          {/* Inline Add Project Button */}
+          {activeTi !== null && (
+            <div className="pt-2 px-1 pb-4">
+              <button
+                onClick={() => {
+                  addProject(activeTi);
+                  setSel({ ti: activeTi, pi: state.TOPICS[activeTi]?.projects.length ?? 0 });
+                }}
+                className="w-full py-3 rounded-lg flex items-center justify-center gap-2 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/20 text-white/70 hover:text-white text-[10px] tracking-widest uppercase font-medium shadow-[0_2px_8px_rgba(0,0,0,0.15)] active:scale-[0.98] transition-all duration-200"
+              >
+                <Plus className="w-3.5 h-3.5 text-white/50" />
+                <span>Add Project</span>
+              </button>
+            </div>
+          )}
         </div>
-
-        {activeTi !== null && (
-          <div className="p-4 border-t border-white/6">
-            <button
-              onClick={() => {
-                addProject(activeTi);
-                setSel({ ti: activeTi, pi: state.TOPICS[activeTi]?.projects.length ?? 0 });
-              }}
-              className="w-full text-[10px] tracking-widest uppercase text-white/25 hover:text-white/65 py-2 transition-colors"
-            >
-              + Add Project
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ═══ COL 3 — INSPECTOR ═════════════════════════════════════════════ */}
-      <div className="flex flex-col flex-1 min-w-0 relative overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 relative overflow-hidden" style={{ background: 'rgba(255,255,255,0.008)' }}>
         <ColHeader>INSPECTOR</ColHeader>
 
         {!selP ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div className="w-14 h-14 rounded-2xl border border-white/[0.06] bg-white/[0.02] flex items-center justify-center">
+              <Film className="w-6 h-6 text-white/10" />
+            </div>
             <p className="text-[11px] tracking-widest uppercase text-white/15">Select a project</p>
+            <p className="text-[10px] text-white/10 normal-case tracking-normal">Click on a project to inspect it</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex-1 flex flex-col min-h-0">
 
-            {/* SECTION A — Media Preview */}
-            <div className="bg-black">
-              <div className="w-full bg-black overflow-hidden" style={{ minHeight: 160 }}>
+            {/* ── Top strip: compact media preview + segmented toggle ── */}
+            <div className="shrink-0 flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              {/* Thumbnail / video preview — capped height */}
+              <div className="relative bg-black overflow-hidden" style={{ width: '40%', maxHeight: 200, minHeight: 120 }}>
                 {mediaTab === 'thumb' ? (
-                  <div
-                    className="relative w-full"
-                    style={{ aspectRatio: (selP.videoAspectRatio || '16/9').replace('/', ' / ') }}
-                  >
+                  <div className="absolute inset-0 flex items-center justify-center bg-black">
                     {(selP.image || guessPreviewUrl(selP.url)) ? (
                       <img
-                        src={previewSrc(selP.image || guessPreviewUrl(selP.url), 800)}
+                        src={previewSrc(selP.image || guessPreviewUrl(selP.url), 400)}
                         alt=""
-                        className="w-full h-full object-cover"
-                        style={{ objectPosition: selP.imagePosition || '50% 50%' }}
+                        className="w-full h-full object-contain"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-white/10">
-                        <Film className="w-12 h-12" />
+                        <Film className="w-10 h-10" />
                       </div>
                     )}
                   </div>
                 ) : (() => {
                   const info = resolveEmbed(selP.url || '');
                   if (!info || info.kind === 'unknown') return (
-                    <div className="flex items-center justify-center py-12 text-white/20 text-xs">No valid video URL</div>
+                    <div className="absolute inset-0 flex items-center justify-center text-white/20 text-xs">No valid video URL</div>
                   );
-                  if (info.kind === 'direct') return <CinematicPlayer src={info.embedUrl} className="w-full" />;
+                  const ratioStr = selP.videoAspectRatio || '16/9';
+                  if (info.kind === 'direct') return (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black">
+                      <div
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          aspectRatio: ratioStr,
+                        }}
+                        className="relative flex items-center justify-center overflow-hidden"
+                      >
+                        <CinematicPlayer src={info.embedUrl} className="w-full h-full" />
+                      </div>
+                    </div>
+                  );
                   return (
-                    <div className="w-full bg-black" style={{ aspectRatio: (selP.videoAspectRatio || '16/9').replace('/', ' / ') }}>
-                      <iframe src={info.embedUrl} title={selP.title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen className="w-full h-full border-0 block" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black">
+                      <div
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          aspectRatio: ratioStr,
+                        }}
+                        className="relative overflow-hidden"
+                      >
+                        <iframe
+                          src={info.embedUrl}
+                          title={selP.title}
+                          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                          allowFullScreen
+                          className="absolute inset-0 w-full h-full border-0 block"
+                        />
+                      </div>
                     </div>
                   );
                 })()}
               </div>
 
-              {/* Segmented toggle */}
-              <div className="flex border-t border-white/8">
-                {[['thumb', 'THUMBNAIL'], ['video', 'VIDEO PLAYER']].map(([id, lbl]) => (
-                  <button
-                    key={id}
-                    onClick={() => setMediaTab(id)}
-                    className={[
-                      'flex-1 py-2 text-[10px] tracking-widest uppercase transition-colors',
-                      mediaTab === id ? 'text-white bg-white/8' : 'text-white/30 hover:text-white/60',
-                    ].join(' ')}
-                  >
-                    {lbl}
-                  </button>
-                ))}
+              {/* Right side: title + media toggle */}
+              <div className="flex-1 flex flex-col min-w-0" style={{ background: 'rgba(255,255,255,0.015)' }}>
+                {/* Quick title / subtitle display */}
+                <div className="flex-1 px-4 py-3 flex flex-col justify-center min-w-0">
+                  <p className="text-[13px] text-white/90 font-medium truncate leading-tight">
+                    {selP.title || <span className="text-white/25 italic">Untitled</span>}
+                  </p>
+                  {selP.subtitle && (
+                    <p className="text-[11px] text-white/30 truncate mt-0.5">{selP.subtitle}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="px-1.5 py-0.5 rounded bg-white/[0.06] text-[9px] text-white/30 uppercase tracking-wider">
+                      {(selP.videoAspectRatio || '16/9').replace('/', ':')}
+                    </span>
+                    {selP.credits?.length > 0 && (
+                      <span className="text-[9px] text-white/20">{selP.credits.length} credit{selP.credits.length !== 1 && 's'}</span>
+                    )}
+                  </div>
+                </div>
+                {/* Media toggle */}
+                <div className="flex px-2 pb-2 gap-1">
+                  {[['thumb', 'THUMB'], ['video', 'PLAYER']].map(([id, lbl]) => (
+                    <button
+                      key={id}
+                      onClick={() => setMediaTab(id)}
+                      className={[
+                        'flex-1 py-1.5 rounded-md text-[9px] tracking-widest uppercase transition-all duration-200',
+                        mediaTab === id
+                          ? 'text-white bg-white/[0.08] shadow-[0_1px_4px_rgba(0,0,0,0.2)]'
+                          : 'text-white/25 hover:text-white/50 hover:bg-white/[0.03]',
+                      ].join(' ')}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* SECTION B — Edit Form */}
-            <div className="px-6 py-5 space-y-5">
+            {/* ── Form section tabs ── */}
+            <div className="shrink-0 flex items-center gap-1 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              {[['details', 'Details'], ['media', 'Media & Framing'], ['credits', 'Credits & Info']].map(([id, lbl]) => (
+                <button
+                  key={id}
+                  onClick={() => setInspectorTab(id)}
+                  className={[
+                    'px-3 py-1.5 rounded-md text-[10px] tracking-wider transition-all duration-200',
+                    inspectorTab === id
+                      ? 'text-white bg-white/[0.08] font-medium'
+                      : 'text-white/30 hover:text-white/55 hover:bg-white/[0.03]',
+                  ].join(' ')}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
 
-              <div className="grid grid-cols-2 gap-5">
-                <GhostField label="TITLE">
-                  <input value={selP.title ?? ''} onChange={(e) => up({ title: e.target.value })} placeholder="Project title" className={GHOST} />
-                </GhostField>
-                <GhostField label="CLIENT / SUBTITLE">
-                  <input value={selP.subtitle ?? ''} onChange={(e) => up({ subtitle: e.target.value })} placeholder="Client or subtitle" className={GHOST} />
-                </GhostField>
-              </div>
+            {/* ── Tab content (scrollable) ── */}
+            <div className="flex-1 overflow-y-auto px-5 py-4" style={{ scrollbarWidth: 'none' }}>
 
-              <GhostField label="VIDEO URL" action={<AssetPicker kind="video" value={selP.url} onPick={(url) => up({ url })} compact />}>
-                <input value={selP.url ?? ''} onChange={(e) => up({ url: e.target.value })} placeholder="YouTube / Vimeo / B2 URL" className={GHOST} />
-              </GhostField>
+              {inspectorTab === 'details' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <GhostField label="TITLE">
+                      <input value={selP.title ?? ''} onChange={(e) => up({ title: e.target.value })} placeholder="Project title" className={GHOST} />
+                    </GhostField>
+                    <GhostField label="CLIENT / SUBTITLE">
+                      <input value={selP.subtitle ?? ''} onChange={(e) => up({ subtitle: e.target.value })} placeholder="Client or subtitle" className={GHOST} />
+                    </GhostField>
+                  </div>
 
-              <GhostField label="THUMBNAIL URL" action={<AssetPicker kind="image" value={selP.image} onPick={(url) => up({ image: url })} compact />}>
-                <input value={selP.image ?? ''} onChange={(e) => up({ image: e.target.value })} placeholder="Image URL" className={GHOST} />
-              </GhostField>
+                  <GhostField label="VIDEO URL" action={<AssetPicker kind="video" value={selP.url} onPick={(url) => up({ url })} compact />}>
+                    <input value={selP.url ?? ''} onChange={(e) => up({ url: e.target.value })} placeholder="YouTube / Vimeo / B2 URL" className={GHOST} />
+                  </GhostField>
 
-              {/* Aspect Ratio — segmented control */}
-              <GhostField label="ASPECT RATIO">
-                <div className="flex mt-1.5">
-                  {[['16:9', '16/9'], ['4:3', '4/3'], ['21:9', '21/9'], ['9:16', '9/16']].map(([lbl, val]) => {
-                    const on = (selP.videoAspectRatio || '16/9') === val;
-                    return (
-                      <button
-                        key={val}
-                        onClick={() => up({ videoAspectRatio: val })}
-                        className={[
-                          'flex-1 py-1.5 text-[10px] tracking-widest uppercase border-y border-r first:border-l first:rounded-l last:rounded-r transition-colors',
-                          on ? 'bg-white text-black border-white' : 'bg-transparent text-white/30 border-white/10 hover:text-white/65',
-                        ].join(' ')}
-                      >
-                        {lbl}
-                      </button>
-                    );
-                  })}
+                  <GhostField label="THUMBNAIL URL" action={<AssetPicker kind="image" value={selP.image} onPick={(url) => up({ image: url })} compact />}>
+                    <input value={selP.image ?? ''} onChange={(e) => up({ image: e.target.value })} placeholder="Image URL" className={GHOST} />
+                  </GhostField>
+
+                  {/* Aspect Ratio — compact pill row */}
+                  <GhostField label="ASPECT RATIO">
+                    <div className="flex gap-1 mt-1">
+                      {[['16:9', '16/9'], ['4:3', '4/3'], ['21:9', '21/9'], ['9:16', '9/16']].map(([lbl, val]) => {
+                        const on = (selP.videoAspectRatio || '16/9') === val;
+                        return (
+                          <button
+                            key={val}
+                            onClick={() => up({ videoAspectRatio: val })}
+                            className={[
+                              'flex-1 py-1.5 rounded-md text-[10px] tracking-wider transition-all duration-200',
+                              on ? 'bg-white text-black font-medium' : 'bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.06]',
+                            ].join(' ')}
+                          >
+                            {lbl}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </GhostField>
                 </div>
-              </GhostField>
+              )}
 
-              <GhostField label="DIRECTOR'S NOTE">
-                <textarea value={selP.directorNote ?? ''} onChange={(e) => up({ directorNote: e.target.value })} placeholder="Story behind the project…" rows={3} className={GHOST + ' resize-none'} />
-              </GhostField>
+              {inspectorTab === 'media' && (
+                <div className="space-y-4">
+                  {/* Image uploader */}
+                  <ImageUploader value={selP.image} onChange={(url) => up({ image: url })} compact aspect="16/9" />
 
-              {/* Credits */}
-              <GhostField label="CREDITS">
-                <div className="space-y-2 mt-1">
-                  {(selP.credits || []).map((cr, ci) => (
-                    <div key={ci} className="flex gap-2 items-end">
-                      <input
-                        value={cr.role || ''}
-                        onChange={(e) => { const n = [...selP.credits]; n[ci] = { ...n[ci], role: e.target.value }; up({ credits: n }); }}
-                        placeholder="Role"
-                        className={GHOST + ' flex-1'}
-                      />
-                      <input
-                        value={cr.name || ''}
-                        onChange={(e) => { const n = [...selP.credits]; n[ci] = { ...n[ci], name: e.target.value }; up({ credits: n }); }}
-                        placeholder="Name"
-                        className={GHOST + ' flex-[1.5]'}
-                      />
-                      <button onClick={() => up({ credits: selP.credits.filter((_, j) => j !== ci) })} className="text-white/20 hover:text-red-400 transition-colors pb-2">
-                        <X className="w-3.5 h-3.5" />
+                  {/* Framing */}
+                  <FramingToggle selP={selP} up={up} />
+                </div>
+              )}
+
+              {inspectorTab === 'credits' && (
+                <div className="space-y-4">
+                  <GhostField label="DIRECTOR'S NOTE">
+                    <textarea value={selP.directorNote ?? ''} onChange={(e) => up({ directorNote: e.target.value })} placeholder="Story behind the project…" rows={2} className={GHOST + ' resize-none'} />
+                  </GhostField>
+
+                  {/* Credits */}
+                  <GhostField label="CREDITS">
+                    <div className="space-y-2 mt-1">
+                      {(selP.credits || []).map((cr, ci) => (
+                        <div key={ci} className="flex gap-2 items-end">
+                          <input
+                            value={cr.role || ''}
+                            onChange={(e) => { const n = [...selP.credits]; n[ci] = { ...n[ci], role: e.target.value }; up({ credits: n }); }}
+                            placeholder="Role"
+                            className={GHOST + ' flex-1'}
+                          />
+                          <input
+                            value={cr.name || ''}
+                            onChange={(e) => { const n = [...selP.credits]; n[ci] = { ...n[ci], name: e.target.value }; up({ credits: n }); }}
+                            placeholder="Name"
+                            className={GHOST + ' flex-[1.5]'}
+                          />
+                          <button onClick={() => up({ credits: selP.credits.filter((_, j) => j !== ci) })} className="text-white/20 hover:text-red-400 transition-colors pb-2">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button onClick={() => up({ credits: [...(selP.credits || []), { role: '', name: '' }] })} className="text-[10px] tracking-widest uppercase text-white/20 hover:text-white/55 transition-colors">
+                        + Add credit
                       </button>
                     </div>
-                  ))}
-                  <button onClick={() => up({ credits: [...(selP.credits || []), { role: '', name: '' }] })} className="text-[10px] tracking-widest uppercase text-white/20 hover:text-white/55 transition-colors">
-                    + Add credit
-                  </button>
+                  </GhostField>
+
+                  <GhostField label="OFFICIAL RELEASE URL">
+                    <input value={selP.releaseUrl ?? ''} onChange={(e) => up({ releaseUrl: e.target.value })} placeholder="https://…" className={GHOST} />
+                  </GhostField>
                 </div>
-              </GhostField>
+              )}
+            </div>
 
-              <GhostField label="OFFICIAL RELEASE URL">
-                <input value={selP.releaseUrl ?? ''} onChange={(e) => up({ releaseUrl: e.target.value })} placeholder="https://…" className={GHOST} />
-              </GhostField>
-
-              {/* Framing toggle */}
-              <FramingToggle selP={selP} up={up} />
-
-              {/* Image uploader */}
-              <ImageUploader value={selP.image} onChange={(url) => up({ image: url })} compact aspect="16/9" />
-
-              {/* Save */}
-              <div className="pt-2 pb-24">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="w-full py-3 rounded text-[11px] tracking-widest uppercase font-semibold transition-all"
-                  style={{
-                    background: saving ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,1)',
-                    color: saving ? 'rgba(255,255,255,0.4)' : '#050507',
-                  }}
-                >
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
-                <button
-                  onClick={() => { if (window.confirm(`Delete "${selP.title}"?`)) { removeProject(sel.ti, sel.pi); setSel(null); } }}
-                  className="w-full mt-2 py-2 text-[10px] tracking-widest uppercase text-red-500/40 hover:text-red-400 transition-colors"
-                >
-                  Delete project
-                </button>
-              </div>
+            {/* ── Sticky footer: Save + Delete ── */}
+            <div className="shrink-0 px-4 py-3 flex items-center gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <button
+                onClick={() => { if (window.confirm(`Delete "${selP.title}"? This cannot be undone.`)) { removeProject(sel.ti, sel.pi); setSel(null); } }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-950/30 border border-red-500/30 text-[10px] tracking-widest uppercase text-red-400 hover:bg-red-900/60 hover:border-red-500/60 hover:text-red-200 hover:shadow-[0_0_12px_rgba(239,68,68,0.45)] active:scale-95 transition-all duration-200"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-2.5 rounded-lg text-[11px] tracking-widest uppercase font-semibold transition-all duration-300 hover:shadow-[0_4px_16px_rgba(255,255,255,0.12)] active:scale-[0.98]"
+                style={{
+                  background: saving
+                    ? 'rgba(255,255,255,0.08)'
+                    : 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(220,220,220,1) 100%)',
+                  color: saving ? 'rgba(255,255,255,0.4)' : '#0a0a0c',
+                }}
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
             </div>
           </div>
         )}
@@ -1288,10 +1516,13 @@ function ProjectsView({ c }) {
 /* Shared column header */
 function ColHeader({ children }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-3 border-b border-white/8 shrink-0">
-      <span className="text-[10px] tracking-widest uppercase text-white/30 font-semibold flex-1 flex items-center gap-2">
+    <div className="relative flex items-center gap-2.5 px-4 py-3.5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <span className="w-1 h-1 rounded-full bg-white/20 shrink-0" />
+      <span className="text-[10px] tracking-[0.18em] uppercase text-white/35 font-semibold flex-1 flex items-center gap-2">
         {children}
       </span>
+      {/* Subtle gradient fade at the bottom */}
+      <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
     </div>
   );
 }
@@ -1299,10 +1530,10 @@ function ColHeader({ children }) {
 /* Ghost input field wrapper */
 function GhostField({ label, action, children }) {
   return (
-    <div>
+    <div className="group/gf relative pl-3 border-l-2 border-transparent focus-within:border-white/20 transition-colors duration-200">
       <div className="flex items-center mb-1.5">
-        <span className="text-[9px] tracking-widest uppercase text-white/28 flex-1">{label}</span>
-        {action && <div className="shrink-0 scale-90 origin-right opacity-60 hover:opacity-100 transition-opacity">{action}</div>}
+        <span className="text-[10px] tracking-widest uppercase text-white/30 flex-1">{label}</span>
+        {action && <div className="shrink-0 scale-90 origin-right opacity-50 hover:opacity-100 transition-opacity">{action}</div>}
       </div>
       {children}
     </div>
@@ -2036,6 +2267,10 @@ function EditorTabs({ view, onChange }) {
         AlphaPROD.
       </EditorTab>
       <EditorTab id="content" view={view} onChange={onChange}>Design</EditorTab>
+      <EditorTab id="assets" view={view} onChange={onChange}>
+        <FolderOpen className="w-3.5 h-3.5" />
+        Asset Library
+      </EditorTab>
       <style>{`
         @keyframes proj-pulse-glow {
           0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.0), 0 0 0 0 rgba(255,255,255,0.0); border-color: rgba(255,255,255,0.25); }
@@ -2247,9 +2482,9 @@ function IconBtn({ children, onClick, title, danger }) {
       onClick={onClick}
       title={title}
       aria-label={title}
-      className={`w-7 h-7 shrink-0 rounded-md border flex items-center justify-center transition-colors ${danger
-        ? 'border-red-500/20 text-red-300/80 hover:text-red-200 hover:border-red-400/40'
-        : 'border-white/10 text-white/60 hover:text-white hover:border-white/40'
+      className={`w-7 h-7 shrink-0 rounded-md border flex items-center justify-center transition-all duration-200 ${danger
+        ? 'bg-red-950/30 border-red-500/30 text-red-400 hover:bg-red-900/60 hover:border-red-500/60 hover:text-red-200 hover:shadow-[0_0_12px_rgba(239,68,68,0.45)] active:scale-95'
+        : 'border-white/10 text-white/60 hover:text-white hover:border-white/40 active:scale-95'
         }`}
     >
       {children}

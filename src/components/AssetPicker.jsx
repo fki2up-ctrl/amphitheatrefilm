@@ -293,7 +293,7 @@ function PickerModal({ kind, value, onPick, onClose }) {
                           onClick={(e) => { e.stopPropagation(); deleteAsset(asset); }}
                           disabled={busy}
                           title="Delete permanently"
-                          className="w-7 h-7 rounded-full bg-ink-950/80 border border-red-400/30 text-red-200 hover:text-red-100 flex items-center justify-center disabled:opacity-40"
+                          className="w-7 h-7 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 hover:bg-red-900/60 hover:border-red-500/60 hover:text-red-200 hover:shadow-[0_0_12px_rgba(239,68,68,0.45)] active:scale-95 transition-all duration-200 flex items-center justify-center disabled:opacity-40"
                         >
                           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                         </button>

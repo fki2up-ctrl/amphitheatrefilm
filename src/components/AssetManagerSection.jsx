@@ -51,7 +51,7 @@ function Section({ title, hint, action, children }) {
   );
 }
 
-export default function AssetManagerSection() {
+export default function AssetManagerSection({ standalone = false }) {
   const [assets, setAssets]   = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr]         = useState('');
@@ -185,22 +185,31 @@ export default function AssetManagerSection() {
     }
   };
 
-  return (
-    <Section
-      title="Asset library"
-      hint="Drag images or videos here to upload. Images go to Cloudinary, videos to Backblaze B2 via Cloudflare."
-      action={
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={loading || !hasSupabase}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[11px] text-white/70 hover:text-white hover:border-white/40 disabled:opacity-40"
-          title="Refresh list"
-        >
-          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-        </button>
-      }
-    >
+  // --- Header block for standalone mode ------------------------------------
+  const headerContent = (
+    <div className="flex items-center justify-between gap-4 pb-4 mb-4 border-b border-white/5">
+      <div>
+        <h3 className="text-xs font-semibold tracking-wider uppercase text-white/95">
+          Asset Library
+        </h3>
+        <p className="mt-1 text-[11px] text-white/40 leading-relaxed max-w-sm">
+          Drag images or videos here to upload. Images go to Cloudinary, videos to Backblaze B2.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={refresh}
+        disabled={loading || !hasSupabase}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[11px] text-white/70 hover:text-white hover:border-white/40 disabled:opacity-40 transition-colors"
+        title="Refresh list"
+      >
+        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+      </button>
+    </div>
+  );
+
+  const innerContent = (
+    <div className="space-y-4">
       {/* --- Dropzone ---------------------------------------------------- */}
       <label
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -307,7 +316,7 @@ export default function AssetManagerSection() {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); removeAsset(asset); }}
                   title="Remove from library"
-                  className="w-7 h-7 rounded-full bg-ink-950/80 border border-red-400/30 text-red-200 hover:text-red-100 flex items-center justify-center"
+                  className="w-7 h-7 rounded-full bg-red-950/40 border border-red-500/30 text-red-400 hover:bg-red-900/60 hover:border-red-500/60 hover:text-red-200 hover:shadow-[0_0_12px_rgba(239,68,68,0.45)] active:scale-95 transition-all duration-200 flex items-center justify-center"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -322,6 +331,35 @@ export default function AssetManagerSection() {
           No assets yet. Uploads made from any inline field will show up here.
         </p>
       )}
+    </div>
+  );
+
+  if (standalone) {
+    return (
+      <div className="flex flex-col h-full">
+        {headerContent}
+        {innerContent}
+      </div>
+    );
+  }
+
+  return (
+    <Section
+      title="Asset library"
+      hint="Drag images or videos here to upload. Images go to Cloudinary, videos to Backblaze B2 via Cloudflare."
+      action={
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={loading || !hasSupabase}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[11px] text-white/70 hover:text-white hover:border-white/40 disabled:opacity-40"
+          title="Refresh list"
+        >
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+        </button>
+      }
+    >
+      {innerContent}
     </Section>
   );
 }
