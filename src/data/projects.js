@@ -126,6 +126,16 @@ export const TOPICS = [
       url:      "https://www.youtube.com/watch?v=1ZK4zGoFA_4",
     }),
     project({
+      title:    "Solitude is Bliss - เพียงสิ่งเดียว (Just One Thing)",
+      subtitle: "Solitude is Bliss - Unofficial MV",
+      url:      "https://youtu.be/iQaxzSfLW4U?si=NhbwPEKOT8a46bEc",
+    }),
+    project({
+      title:    "Dream On, Ice Cream",
+      subtitle: "Solitude is Bliss Unoffical MV",
+      url:      "https://youtu.be/JScQGniQk-M?si=t1AJlptFynbDEIu_",
+    }),
+    project({
       title:    "The Melting Faith",
       subtitle: "Young Thai Artist Award 2022",
       url:      "https://www.youtube.com/watch?v=nnLjS8lcY80",
