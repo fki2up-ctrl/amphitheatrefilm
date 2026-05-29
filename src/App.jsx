@@ -7,6 +7,7 @@ import MobileNav from './components/MobileNav';
 import FloatingCategoryBar from './components/FloatingCategoryBar';
 import MobileTopBar from './components/MobileTopBar';
 import ProjectGrid from './components/ProjectGrid';
+import GalleryPort from './components/GalleryPort';
 import VideoModal from './components/VideoModal';
 import useActiveSection from './hooks/useActiveSection';
 import { useContent } from './store/content';
@@ -200,9 +201,11 @@ export default function App() {
             <Sidebar onOpenEditor={() => setEditorOpen(true)} />
 
             <main className="relative z-10 lg:ml-[var(--site-sidebar-width,280px)]">
-              <div className="px-4 sm:px-8 lg:pl-12 lg:pr-[var(--site-content-pr,160px)] pt-[calc(var(--mobile-header-height,128px)+16px)] lg:pt-16 pb-28 lg:pb-24">
+              <div className="px-4 sm:px-8 lg:pl-12 lg:pr-[var(--site-content-pr,160px)] pt-[calc(var(--mobile-header-height,128px)+16px)] lg:pt-16">
                 <GalleryHeader />
-                <ProjectGrid
+              </div>
+              <div className="pb-28 lg:pb-24">
+                <GalleryPort
                   onOpen={setOpenProject}
                   filterCategoryId={singleCategoryId}
                 />

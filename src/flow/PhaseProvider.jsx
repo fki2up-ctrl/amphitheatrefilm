@@ -14,7 +14,7 @@
 // them. AnimatePresence in App.jsx owns the visual crossfade / dive-in.
 // ---------------------------------------------------------------------------
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const ALL = 'all';
 export const CATEGORY_ALL = ALL;
@@ -24,10 +24,14 @@ const PhaseContext = createContext(null);
 const SEEN_KEY = 'amphitheatre:intro:seen';
 
 export function PhaseProvider({ children }) {
-  // If the user has visited before, skip straight to Landing so they don't
-  // sit through the cinematic intro on every page load.
+  // If the user navigates directly to /galleryport, skip intro/landing and
+  // show the gallery immediately. Otherwise check if they've visited before.
   const [phase, setPhase] = useState(() => {
     try {
+      const path = window.location.pathname.replace(/\/$/, '');
+      if (path === '/galleryport') {
+        return 'gallery';
+      }
       return localStorage.getItem(SEEN_KEY) ? 'landing' : 'intro';
     } catch {
       return 'intro';
@@ -38,6 +42,21 @@ export function PhaseProvider({ children }) {
   // selected so the Gallery can render it. 'all' is the sentinel for the
   // long-scroll view; anything else is a topic id from the content store.
   const [selectedCategory, setSelectedCategory] = useState(ALL);
+
+  // Sync browser back/forward buttons (popstate events) with application phases
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.replace(/\/$/, '');
+      if (path === '/galleryport') {
+        setPhase('gallery');
+      } else {
+        setPhase(localStorage.getItem(SEEN_KEY) ? 'landing' : 'intro');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Action: Intro sequence has finished — enter Landing. Mark as seen so
   // future visits skip the intro.
@@ -51,17 +70,38 @@ export function PhaseProvider({ children }) {
   const openCategory = useCallback((id) => {
     setSelectedCategory(id || ALL);
     setPhase('gallery');
+    try {
+      if (window.location.pathname.replace(/\/$/, '') !== '/galleryport') {
+        window.history.pushState({ phase: 'gallery' }, '', '/galleryport');
+      }
+    } catch (e) {
+      console.warn('Failed to pushState for galleryport:', e);
+    }
   }, []);
 
   // Action: Take the user back to Landing (e.g. a "Home" button in gallery).
   const returnToLanding = useCallback(() => {
     setPhase('landing');
+    try {
+      if (window.location.pathname !== '/') {
+        window.history.pushState({ phase: 'landing' }, '', '/');
+      }
+    } catch (e) {
+      console.warn('Failed to pushState for home:', e);
+    }
   }, []);
 
   // Action: Jump straight to gallery (e.g. deep links, dev shortcut).
   const skipToGallery = useCallback((id) => {
     setSelectedCategory(id || ALL);
     setPhase('gallery');
+    try {
+      if (window.location.pathname.replace(/\/$/, '') !== '/galleryport') {
+        window.history.pushState({ phase: 'gallery' }, '', '/galleryport');
+      }
+    } catch (e) {
+      console.warn('Failed to pushState for galleryport:', e);
+    }
   }, []);
 
   const value = useMemo(
@@ -84,3 +124,4 @@ export function usePhase() {
   if (!v) throw new Error('usePhase must be used inside <PhaseProvider>');
   return v;
 }
+
