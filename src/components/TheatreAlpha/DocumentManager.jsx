@@ -21,7 +21,7 @@ import {
   Plus, X, Trash2, Upload, FileText, Receipt,
   ExternalLink, Check, AlertCircle, Loader2,
   ChevronDown, TrendingUp, TrendingDown, Minus,
-  Search, Download, Settings2, GripVertical,
+  Search, Download, Settings2, GripVertical, Save,
 } from 'lucide-react';
 import { formatMoney } from '../../lib/finance';
 import { generateQtNumber, uploadPOFile } from '../../lib/documents';
@@ -129,11 +129,11 @@ function calcTotals(lineItems, discountPct = 0, vatPct = 0, whtPct = 0) {
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG = {
-  draft:       { label: 'Draft',       bg: 'bg-gray-500/15',   text: 'text-gray-300',   border: 'border-gray-500/30',   dot: 'bg-gray-400'   },
-  quoted:      { label: 'Quoted',      bg: 'bg-blue-500/15',   text: 'text-blue-300',   border: 'border-blue-500/30',   dot: 'bg-blue-400'   },
-  po_received: { label: 'PO Received', bg: 'bg-amber-500/15',  text: 'text-amber-300',  border: 'border-amber-500/30',  dot: 'bg-amber-400'  },
-  invoiced:    { label: 'Invoiced',    bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-500/30', dot: 'bg-purple-400' },
-  paid:        { label: 'Paid',        bg: 'bg-emerald-500/15',text: 'text-emerald-300',border: 'border-emerald-500/30',dot: 'bg-emerald-400'},
+  draft: { label: 'Draft', bg: 'bg-gray-500/15', text: 'text-gray-300', border: 'border-gray-500/30', dot: 'bg-gray-400' },
+  quoted: { label: 'Quoted', bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/30', dot: 'bg-blue-400' },
+  po_received: { label: 'PO Received', bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/30', dot: 'bg-amber-400' },
+  invoiced: { label: 'Invoiced', bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-500/30', dot: 'bg-purple-400' },
+  paid: { label: 'Paid', bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
 };
 
 function StatusBadge({ status }) {
@@ -153,7 +153,7 @@ function StatusBadge({ status }) {
 export default function DocumentManager({ settings }) {
   const sym = settings?.currency_symbol || '฿';
   const [projects, setProjects] = useState(MOCK_PROJECTS);
-  const [clients, setClients]   = useState(MOCK_CLIENTS);
+  const [clients, setClients] = useState(MOCK_CLIENTS);
   const [selectedId, setSelectedId] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -403,11 +403,11 @@ function Row({ label, value, accent = 'text-white/80', bold }) {
 // ---------------------------------------------------------------------------
 
 function ClientCombobox({ clients, value, onChange, onCreateClient }) {
-  const [query, setQuery]         = useState('');
-  const [open, setOpen]           = useState(false);
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
   const [composing, setComposing] = useState(false);
-  const inputRef  = useRef(null);
-  const wrapRef   = useRef(null);
+  const inputRef = useRef(null);
+  const wrapRef = useRef(null);
 
   const selectedClient = clients.find((c) => c.id === value);
   const displayName = selectedClient?.company_name || '';
@@ -494,9 +494,9 @@ function ClientCombobox({ clients, value, onChange, onCreateClient }) {
 // ---------------------------------------------------------------------------
 
 function QuickClientModal({ onAddClient, onClose }) {
-  const [name, setName]       = useState('');
+  const [name, setName] = useState('');
   const [address, setAddress] = useState('');
-  const [taxId, setTaxId]     = useState('');
+  const [taxId, setTaxId] = useState('');
   const inputCls = 'w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-colors';
   const labelCls = 'block text-[10px] tracking-widest2 uppercase text-white/40 mb-1';
 
@@ -521,7 +521,7 @@ function QuickClientModal({ onAddClient, onClose }) {
             <label className={labelCls}>Company Name *</label>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. บริษัท สยาม จำกัด"
               className={inputCls} autoFocus
-              onCompositionStart={() => {}} onCompositionEnd={() => {}} />
+              onCompositionStart={() => { }} onCompositionEnd={() => { }} />
           </div>
           <div>
             <label className={labelCls}>Address</label>
@@ -551,20 +551,20 @@ function QuickClientModal({ onAddClient, onClose }) {
 // ---------------------------------------------------------------------------
 
 const DOC_TYPES = [
-  { key: 'quotation',      label: 'Quotation',      statusVal: 'draft',      color: 'amber' },
-  { key: 'purchase_order', label: 'Purchase Order',  statusVal: 'po',         color: 'blue' },
-  { key: 'invoice',        label: 'Invoice',         statusVal: 'invoiced',   color: 'purple' },
-  { key: 'receipt',        label: 'Receipt',         statusVal: 'paid',       color: 'emerald' },
+  { key: 'quotation', label: 'Quotation', statusVal: 'draft', color: 'amber' },
+  { key: 'purchase_order', label: 'Purchase Order', statusVal: 'po', color: 'blue' },
+  { key: 'invoice', label: 'Invoice', statusVal: 'invoiced', color: 'purple' },
+  { key: 'receipt', label: 'Receipt', statusVal: 'paid', color: 'emerald' },
 ];
 
 function DocTypeTabs({ activeType, onSelect, onDownload, pdfBusy, hasPO }) {
   const [hoverKey, setHoverKey] = useState(null);
 
   const colorMap = {
-    amber:   { bg: 'bg-amber-500/15',   border: 'border-amber-400/40',  text: 'text-amber-300',   hoverBg: 'hover:bg-amber-500/10' },
-    blue:    { bg: 'bg-blue-500/15',     border: 'border-blue-400/40',   text: 'text-blue-300',    hoverBg: 'hover:bg-blue-500/10' },
-    purple:  { bg: 'bg-purple-500/15',   border: 'border-purple-400/40', text: 'text-purple-300',  hoverBg: 'hover:bg-purple-500/10' },
-    emerald: { bg: 'bg-emerald-500/15',  border: 'border-emerald-400/40',text: 'text-emerald-300', hoverBg: 'hover:bg-emerald-500/10' },
+    amber: { bg: 'bg-amber-500/15', border: 'border-amber-400/40', text: 'text-amber-300', hoverBg: 'hover:bg-amber-500/10' },
+    blue: { bg: 'bg-blue-500/15', border: 'border-blue-400/40', text: 'text-blue-300', hoverBg: 'hover:bg-blue-500/10' },
+    purple: { bg: 'bg-purple-500/15', border: 'border-purple-400/40', text: 'text-purple-300', hoverBg: 'hover:bg-purple-500/10' },
+    emerald: { bg: 'bg-emerald-500/15', border: 'border-emerald-400/40', text: 'text-emerald-300', hoverBg: 'hover:bg-emerald-500/10' },
   };
 
   const tabs = DOC_TYPES.filter(dt => dt.key !== 'purchase_order' || hasPO);
@@ -614,9 +614,8 @@ function DocTypeTabs({ activeType, onSelect, onDownload, pdfBusy, hasPO }) {
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
-                  className={`text-[10px] tracking-wide uppercase ${
-                    isActive ? c.text : 'text-white'
-                  }`}
+                  className={`text-[10px] tracking-wide uppercase ${isActive ? c.text : 'text-white'
+                    }`}
                 >
                   {dt.label}
                 </motion.span>
@@ -650,18 +649,18 @@ function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtP
   const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(lineItems, discountPct, vatPct, whtPct);
   const date = new Date(project.created_at);
   const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-  
+
   // Use override if provided, otherwise fall back to project status
   const docTitleMap = { quotation: 'QUOTATION', purchase_order: 'PURCHASE ORDER', invoice: 'INVOICE', receipt: 'RECEIPT' };
   const statusToKey = { draft: 'quotation', po: 'purchase_order', invoiced: 'invoice', paid: 'receipt' };
   const activeKey = overrideDocType || statusToKey[project.status] || 'quotation';
   const docTitle = docTitleMap[activeKey] || 'QUOTATION';
-  
+
   // Doc number prefix
   const prefixMap = { quotation: 'QT', purchase_order: 'PO', invoice: 'INV', receipt: 'REC' };
   const prefix = prefixMap[activeKey] || 'QT';
   const docNumber = project.qt_number ? project.qt_number.replace(/^QT/, prefix) : `${prefix}-001`;
-  
+
   const fmtNum = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
@@ -780,16 +779,16 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
   const p = project;
 
   // --- Local form state (now with separate vat/wht) ---
-  const [clientId, setClientId]       = useState(p.client_id);
-  const [refName, setRefName]         = useState(p.reference_name);
-  const [status, setStatus]           = useState(p.status);
+  const [clientId, setClientId] = useState(p.client_id);
+  const [refName, setRefName] = useState(p.reference_name);
+  const [status, setStatus] = useState(p.status);
   const [discountPct, setDiscountPct] = useState(p.discount_pct);
-  const [vatPct, setVatPct]           = useState(p.vat_pct ?? p.tax_pct ?? 7);
-  const [whtPct, setWhtPct]           = useState(p.wht_pct ?? 0);
-  const [poNumber, setPoNumber]       = useState(p.po_number);
-  const [poFileUrl, setPoFileUrl]     = useState(p.po_file_url);
-  const [lineItems, setLineItems]     = useState(p.line_items);
-  const [expenses, setExpenses]       = useState(p.expenses);
+  const [vatPct, setVatPct] = useState(p.vat_pct ?? p.tax_pct ?? 7);
+  const [whtPct, setWhtPct] = useState(p.wht_pct ?? 0);
+  const [poNumber, setPoNumber] = useState(p.po_number);
+  const [poFileUrl, setPoFileUrl] = useState(p.po_file_url);
+  const [lineItems, setLineItems] = useState(p.line_items);
+  const [expenses, setExpenses] = useState(p.expenses);
   const [clientModalOpen, setClientModalOpen] = useState(false);
 
   // --- Resizable panel ---
@@ -841,16 +840,35 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
     };
   }, [dragging, previewDragging, formDragging, panelWidth, formWidth, previewWidth]);
 
-  // Sync upstream
-  useEffect(() => {
-    onUpdate({
-      client_id: clientId, reference_name: refName, status,
-      discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
-      po_number: poNumber, po_file_url: poFileUrl,
-      line_items: lineItems, expenses,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, refName, status, discountPct, vatPct, whtPct, poNumber, poFileUrl, lineItems, expenses]);
+  // --- Manual Save Tracking ---
+  const currentStateStr = JSON.stringify({
+    client_id: clientId, reference_name: refName, status,
+    discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
+    po_number: poNumber, po_file_url: poFileUrl,
+    line_items: lineItems, expenses,
+  });
+  const [initialStateStr, setInitialStateStr] = useState(currentStateStr);
+  const isDirty = currentStateStr !== initialStateStr;
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!isDirty || isSaving) return;
+    setIsSaving(true);
+    try {
+      await onUpdate({
+        client_id: clientId, reference_name: refName, status,
+        discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
+        po_number: poNumber, po_file_url: poFileUrl,
+        line_items: lineItems, expenses,
+      });
+      setInitialStateStr(currentStateStr);
+    } catch (err) {
+      console.error('[Save Error]', err);
+      alert('Failed to save document.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(lineItems, discountPct, vatPct, whtPct);
   const expTotal = calcExpensesTotal(expenses);
@@ -925,19 +943,19 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
             <h2 className="text-sm text-white">{refName || 'New Quotation'}</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => handleDownloadPDF(null, status === 'paid' ? 'Receipt' : status === 'invoiced' ? 'Invoice' : 'Quotation')} disabled={pdfBusy}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/20 text-white/80 hover:bg-white/10 hover:text-white text-[11px] transition-colors disabled:opacity-40">
-              {pdfBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-              {pdfBusy ? 'Exporting…' : 'Download PDF'}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!isDirty || isSaving}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[11px] transition-colors ${isDirty
+                  ? 'border-blue-500 bg-blue-500/20 text-blue-200 hover:bg-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                  : 'border-white/10 text-white/40'
+                }`}
+            >
+              {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+              {isSaving ? 'Saving...' : (isDirty ? 'Save Changes' : 'Saved')}
             </button>
-            <button type="button" onClick={() => setStatus('invoiced')}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-purple-500/30 text-purple-300 hover:bg-purple-500/10 text-[11px] transition-colors">
-              <FileText className="w-3 h-3" /> Invoice
-            </button>
-            <button type="button" onClick={() => setStatus('paid')}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 text-[11px] transition-colors">
-              <Receipt className="w-3 h-3" /> Receipt
-            </button>
+
             <button onClick={onClose} className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-colors">
               <X className="w-4 h-4" />
             </button>
@@ -948,7 +966,7 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
 
           {/* ====== LEFT PANE — Editor Form ====== */}
-          <div 
+          <div
             className="shrink-0 min-w-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-[#141416] overflow-y-auto pretty-scroll relative flex flex-col"
             style={{ width: formWidth }}
           >
@@ -1077,7 +1095,7 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
           </div>
 
           {/* ====== RIGHT PANE — Live A4 Preview ====== */}
-          <div 
+          <div
             className="shrink-0 min-w-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#1a1a1e] overflow-y-auto pretty-scroll flex flex-col relative"
             style={{ width: previewWidth }}
           >
@@ -1244,7 +1262,7 @@ function ExpensesEditor({ items, onChange, sym }) {
 function POUploadSection({ poNumber, poFileUrl, onPoNumberChange, onPoFileUrlChange, inputCls, labelCls }) {
   const fileRef = useRef(null);
   const [uploadState, setUploadState] = useState(poFileUrl ? 'success' : 'idle');
-  const [uploadPct, setUploadPct]     = useState(0);
+  const [uploadPct, setUploadPct] = useState(0);
   const [uploadError, setUploadError] = useState('');
 
   const handleFile = async (file) => {
@@ -1283,7 +1301,7 @@ function POUploadSection({ poNumber, poFileUrl, onPoNumberChange, onPoFileUrlCha
               onDragOver={(e) => e.preventDefault()}
               className={['relative flex items-center justify-center gap-2 px-3 py-3 rounded-md border border-dashed cursor-pointer transition-colors',
                 uploadState === 'uploading' ? 'border-amber-500/40 bg-amber-500/5' :
-                uploadState === 'error' ? 'border-red-500/40 bg-red-500/5' : 'border-white/15 bg-white/[0.02] hover:border-white/30',
+                  uploadState === 'error' ? 'border-red-500/40 bg-red-500/5' : 'border-white/15 bg-white/[0.02] hover:border-white/30',
               ].join(' ')}>
               {uploadState === 'uploading' ? (
                 <><Loader2 className="w-4 h-4 animate-spin text-amber-400" /><span className="text-xs text-amber-300">Uploading… {uploadPct}%</span>
