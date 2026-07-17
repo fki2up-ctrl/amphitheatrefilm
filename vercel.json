@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    { "source": "/alphaprod", "destination": "/index.html" },
+    { "source": "/alphaprod/(.*)", "destination": "/index.html" },
     { "source": "/galleryport", "destination": "/index.html" },
     { "source": "/galleryport/", "destination": "/index.html" }
   ],
