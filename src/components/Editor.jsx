@@ -33,10 +33,9 @@ import ImageUploader from './ImageUploader';
 import VideoUploader from './VideoUploader';
 import AssetManagerSection from './AssetManagerSection';
 import AssetPicker from './AssetPicker';
-import TheatreAlpha from './TheatreAlpha';
 import CinematicPlayer from './CinematicPlayer';
 import { resolveEmbed } from '../lib/embed';
-import { Clapperboard, FolderOpen } from 'lucide-react';
+import { FolderOpen } from 'lucide-react';
 
 // Preview thumbnails in the editor sidebar are small; 400 px is ample even
 // at 2× DPR. `previewSrc` returns the optimized Cloudinary URL when possible,
@@ -70,8 +69,7 @@ export default function Editor({ open, onClose }) {
   const [session, setSession] = useState(null);
   const [authLoaded, setAuthLoaded] = useState(!hasSupabase);
 
-  // Top-level Editor view: 'content' (existing site editor) or 'theatre'
-  // (Theatre Alpha studio module). Theatre Alpha widens the drawer.
+  // Top-level Editor view: 'topics' | 'content' | 'assets'
   const [view, setView] = useState('content');
 
   useEffect(() => {
@@ -179,7 +177,7 @@ export default function Editor({ open, onClose }) {
             transition={{ type: 'spring', stiffness: 260, damping: 32 }}
             className={[
               'fixed right-0 top-0 bottom-0 z-[91] bg-ink-950 border-l border-white/10 flex flex-col transition-[width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
-              (view === 'theatre' || view === 'topics')
+              view === 'topics'
                 ? 'w-screen'
                 : 'w-full sm:w-[460px]',
             ].join(' ')}
@@ -207,11 +205,7 @@ export default function Editor({ open, onClose }) {
               <>
                 <EditorTabs view={view} onChange={setView} />
 
-                {view === 'theatre' ? (
-                  <div className="flex-1 min-h-0 overflow-hidden px-5 py-5">
-                    <TheatreAlpha />
-                  </div>
-                ) : view === 'topics' ? (
+                {view === 'topics' ? (
                   <div className="flex-1 min-h-0 overflow-hidden">
                     <ProjectsView c={c} />
                   </div>
@@ -2312,10 +2306,6 @@ function EditorTabs({ view, onChange }) {
       <EditorTab id="topics" view={view} onChange={onChange} glow="white">
         Projects
       </EditorTab>
-      <EditorTab id="theatre" view={view} onChange={onChange} glow="amber">
-        <Clapperboard className="w-3.5 h-3.5" />
-        AlphaPROD.
-      </EditorTab>
       <EditorTab id="content" view={view} onChange={onChange} glow="sky">Design</EditorTab>
       <EditorTab id="assets" view={view} onChange={onChange} glow="red">
         <FolderOpen className="w-3.5 h-3.5" />
@@ -2332,15 +2322,7 @@ function EditorTabs({ view, onChange }) {
         }
         .proj-tab-glow:hover { color: #fff; }
 
-        @keyframes ta-pulse-glow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.0), 0 0 0 0 rgba(245,158,11,0.0); border-color: rgba(245,158,11,0.55); }
-          50%      { box-shadow: 0 0 14px 2px rgba(245,158,11,0.45), 0 0 28px 4px rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.95); }
-        }
-        .ta-tab-glow {
-          animation: ta-pulse-glow 2.4s ease-in-out infinite;
-          color: rgba(245,158,11,0.95);
-        }
-        .ta-tab-glow:hover { color: #fff; }
+
 
         @keyframes assets-pulse-glow {
           0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.0), 0 0 0 0 rgba(239,68,68,0.0); border-color: rgba(239,68,68,0.35); }

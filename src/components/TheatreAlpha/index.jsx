@@ -15,9 +15,11 @@ import {
 import SidebarNav from './SidebarNav';
 import ProductionSchedule from './ProductionSchedule';
 import CostsAccounting from './CostsAccounting';
+import DocumentManager from './DocumentManager';
+import Settings from './Settings';
 
 export default function TheatreAlpha() {
-  const [view, setView] = useState('schedule');         // 'schedule' | 'costs'
+  const [view, setView] = useState('schedule');         // 'schedule' | 'costs' | 'documents' | 'settings'
   const [jobs, setJobs] = useState([]);
   const [settings, setSettings] = useState({
     currency_code: 'THB', currency_symbol: '฿', tax_rate_pct: 3,
@@ -103,6 +105,15 @@ export default function TheatreAlpha() {
             {view === 'costs' && (
               <CostsAccounting
                 jobs={jobs}
+                settings={settings}
+                onSaveSettings={onSaveSettings}
+              />
+            )}
+            {view === 'documents' && (
+              <DocumentManager settings={settings} />
+            )}
+            {view === 'settings' && (
+              <Settings
                 settings={settings}
                 onSaveSettings={onSaveSettings}
               />
