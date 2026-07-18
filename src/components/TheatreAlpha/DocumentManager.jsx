@@ -697,17 +697,17 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
   const [clientModalOpen, setClientModalOpen] = useState(false);
 
   // --- Resizable panel ---
-  const [panelWidth, setPanelWidth] = useState(() => Math.min(window.innerWidth * 0.96, 1800));
+  const [panelWidth, setPanelWidth] = useState(() => window.innerWidth * 0.96);
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef(null);
 
   // --- Resizable Mindmap (Middle Pane) ---
-  const [mindmapWidth, setMindmapWidth] = useState(650);
+  const [mindmapWidth, setMindmapWidth] = useState(() => (window.innerWidth * 0.96) * 0.43);
   const [mindmapDragging, setMindmapDragging] = useState(false);
   const mindmapDragRef = useRef(null);
 
   // --- Resizable Form (Left Pane) ---
-  const [formWidth, setFormWidth] = useState(480);
+  const [formWidth, setFormWidth] = useState(() => (window.innerWidth * 0.96) * 0.25);
   const [formDragging, setFormDragging] = useState(false);
   const formDragRef = useRef(null);
 
