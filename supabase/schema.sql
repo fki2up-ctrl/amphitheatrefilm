@@ -232,9 +232,9 @@ create policy "alpha_clients access" on public.alpha_clients for all using (true
 -- ---------------------------------------------------------------------------
 -- doc_quotations (Jobs / Invoices)
 -- ---------------------------------------------------------------------------
-drop table if exists public.doc_quotations cascade;
 create table if not exists public.doc_quotations (
   id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users(id),
   client_id uuid references public.alpha_clients(id) on delete set null,
   qt_number text not null,
   project_name text,
@@ -244,9 +244,9 @@ create table if not exists public.doc_quotations (
   discount_pct numeric default 0,
   vat_pct numeric default 7,
   wht_pct numeric default 0,
+  notes text,
   po_number text,
   po_file_url text,
-  notes text,
   created_at timestamptz not null default now()
 );
 alter table public.doc_quotations enable row level security;

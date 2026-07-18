@@ -82,16 +82,14 @@ export async function createJob(input) {
 }
 
 export async function updateJob(id, patch, lineItems = null, expenses = null) {
-  if (patch) {
-    // Sanitize numeric fields in patch
-    const sanitizedPatch = { ...patch };
-    if ('discount_pct' in sanitizedPatch) sanitizedPatch.discount_pct = Number(sanitizedPatch.discount_pct) || 0;
-    if ('vat_pct' in sanitizedPatch) sanitizedPatch.vat_pct = Number(sanitizedPatch.vat_pct) || 0;
-    if ('wht_pct' in sanitizedPatch) sanitizedPatch.wht_pct = Number(sanitizedPatch.wht_pct) || 0;
-
+  // Update quotation core fields
+  if (Object.keys(patch).length > 0) {
+    const cleanPatch = { ...patch };
+    if (cleanPatch.client_id === '') cleanPatch.client_id = null;
+    
     const { error } = await supabase
       .from('doc_quotations')
-      .update(sanitizedPatch)
+      .update(cleanPatch)
       .eq('id', id);
     if (error) throw error;
   }
@@ -119,11 +117,11 @@ export async function updateJob(id, patch, lineItems = null, expenses = null) {
         quotation_id: id,
         category: ex.category || ex.type || '',
         description: ex.description || ex.expense_name || ex.label || '',
-        amount: Number(ex.amount || ex.value) || 0,
+        amount: Number(ex.amount !== undefined ? ex.amount : ex.value) || 0,
         expense_date: ex.expense_date || ex.date || null,
         is_paid: ex.is_paid || ex.paid || false,
-        x: ex.x || 0,
-        y: ex.y || 0
+        x: Number(ex.x) || 0,
+        y: Number(ex.y) || 0
       }));
       await supabase.from('doc_expenses').insert(expensesToInsert);
     }
