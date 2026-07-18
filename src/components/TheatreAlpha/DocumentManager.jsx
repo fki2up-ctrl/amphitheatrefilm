@@ -697,38 +697,42 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
   const [clientModalOpen, setClientModalOpen] = useState(false);
 
   // --- Resizable panel ---
-  const [panelWidth, setPanelWidth] = useState(() => Math.min(window.innerWidth * 0.92, 1600));
+  const [panelWidth, setPanelWidth] = useState(() => Math.min(window.innerWidth * 0.96, 1800));
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef(null);
 
-  // --- Resizable Preview ---
-  const [previewWidth, setPreviewWidth] = useState(420);
-  const [previewDragging, setPreviewDragging] = useState(false);
-  const previewDragRef = useRef(null);
+  // --- Resizable Mindmap (Middle Pane) ---
+  const [mindmapWidth, setMindmapWidth] = useState(650);
+  const [mindmapDragging, setMindmapDragging] = useState(false);
+  const mindmapDragRef = useRef(null);
 
   // --- Resizable Form (Left Pane) ---
-  const [formWidth, setFormWidth] = useState(380);
+  const [formWidth, setFormWidth] = useState(480);
   const [formDragging, setFormDragging] = useState(false);
   const formDragRef = useRef(null);
 
   useEffect(() => {
-    if (!dragging && !previewDragging && !formDragging) return;
+    if (!dragging && !mindmapDragging && !formDragging) return;
     const onMove = (e) => {
       const x = e.clientX ?? e.touches?.[0]?.clientX;
       if (x == null) return;
       if (dragging) {
         const newW = Math.max(600, Math.min(window.innerWidth * 0.98, window.innerWidth - x));
         setPanelWidth(newW);
-      } else if (previewDragging) {
-        const newW = window.innerWidth - x;
-        setPreviewWidth(Math.max(250, Math.min(panelWidth - formWidth - 200, newW)));
+      } else if (mindmapDragging) {
+        // Handle is between Mindmap and Preview.
+        // It controls the width of the Mindmap.
+        const panelLeft = window.innerWidth - panelWidth;
+        const mindmapLeft = panelLeft + formWidth;
+        const newW = x - mindmapLeft;
+        setMindmapWidth(Math.max(300, Math.min(panelWidth - formWidth - 300, newW)));
       } else if (formDragging) {
         const panelLeft = window.innerWidth - panelWidth;
         const newW = x - panelLeft;
-        setFormWidth(Math.max(250, Math.min(panelWidth - previewWidth - 200, newW)));
+        setFormWidth(Math.max(300, Math.min(panelWidth - mindmapWidth - 300, newW)));
       }
     };
-    const onUp = () => { setDragging(false); setPreviewDragging(false); setFormDragging(false); };
+    const onUp = () => { setDragging(false); setMindmapDragging(false); setFormDragging(false); };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     window.addEventListener('touchmove', onMove);
@@ -743,7 +747,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [dragging, previewDragging, formDragging, panelWidth, formWidth, previewWidth]);
+  }, [dragging, mindmapDragging, formDragging, panelWidth, formWidth, mindmapWidth]);
 
   // --- Manual Save Tracking ---
   const currentStateStr = JSON.stringify({
@@ -976,7 +980,10 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
           </div>
 
           {/* ====== MIDDLE PANE — Interactive Expense Mindmap ====== */}
-          <div className="shrink-0 lg:flex-1 min-w-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#1a1a1e] flex flex-col relative">
+          <div
+            className="shrink-0 min-w-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#1a1a1e] flex flex-col relative"
+            style={{ width: mindmapWidth }}
+          >
             
             {/* Form Resize handle (moved here to avoid scrollbar clash) */}
             <div
@@ -1007,22 +1014,21 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
 
           {/* ====== RIGHT PANE — Live A4 Preview ====== */}
           <div
-            className="shrink-0 min-w-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#1a1a1e] overflow-y-auto pretty-scroll flex flex-col relative"
-            style={{ width: previewWidth }}
+            className="shrink-0 lg:flex-1 min-w-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#1a1a1e] overflow-y-auto pretty-scroll flex flex-col relative"
           >
-            {/* Preview Resize handle */}
+            {/* Mindmap Resize handle */}
             <div
-              ref={previewDragRef}
-              onMouseDown={() => setPreviewDragging(true)}
-              onTouchStart={() => setPreviewDragging(true)}
+              ref={mindmapDragRef}
+              onMouseDown={() => setMindmapDragging(true)}
+              onTouchStart={() => setMindmapDragging(true)}
               className={[
-                'absolute left-0 top-0 bottom-0 w-2 z-30 cursor-col-resize flex items-center justify-center group transition-colors',
-                previewDragging ? 'bg-white/10' : 'hover:bg-white/5',
+                'absolute left-0 top-0 bottom-0 w-2 z-30 cursor-col-resize flex items-center justify-center group transition-colors -ml-1',
+                mindmapDragging ? 'bg-white/10' : 'hover:bg-white/5',
               ].join(' ')}
             >
               <div className={[
                 'w-0.5 h-10 rounded-full transition-colors',
-                previewDragging ? 'bg-white/30' : 'bg-white/10 group-hover:bg-white/20',
+                mindmapDragging ? 'bg-white/30' : 'bg-white/10 group-hover:bg-white/20',
               ].join(' ')} />
             </div>
 
