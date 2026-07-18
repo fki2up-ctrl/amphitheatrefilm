@@ -549,11 +549,12 @@ function usePreviewFont() {
   }, []);
 }
 
-function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtPct, refName, sym, overrideDocType }) {
+function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtPct, refName, sym, overrideDocType, issueDate }) {
   usePreviewFont();
 
   const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(lineItems, discountPct, vatPct, whtPct);
-  const date = new Date(project.created_at || Date.now());
+  // Default to issueDate (from props), fallback to project.issue_date, then created_at
+  const date = new Date(issueDate || project.issue_date || project.created_at || Date.now());
   const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 
   // Use override if provided, otherwise fall back to project status
@@ -688,6 +689,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
   const [discountPct, setDiscountPct] = useState(p.discount_pct || 0);
   const [vatPct, setVatPct] = useState(p.vat_pct !== undefined ? p.vat_pct : 7);
   const [whtPct, setWhtPct] = useState(p.wht_pct || 0);
+  const [issueDate, setIssueDate] = useState(p.issue_date || (p.created_at ? p.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)));
   const [poNumber, setPoNumber] = useState(p.po_number || '');
   const [poFileUrl, setPoFileUrl] = useState(p.po_file_url || null);
   const [lineItems, setLineItems] = useState(p.doc_line_items || p.line_items || []);
@@ -747,6 +749,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
   const currentStateStr = JSON.stringify({
     client_id: clientId, project_name: refName, status,
     discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
+    issue_date: issueDate,
     po_number: poNumber, po_file_url: poFileUrl,
     line_items: lineItems, expenses,
   });
@@ -761,6 +764,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
       await onUpdate({
         client_id: clientId, project_name: refName, status,
         discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
+        issue_date: issueDate || null,
         po_number: poNumber, po_file_url: poFileUrl,
       }, lineItems, expenses);
       setInitialStateStr(currentStateStr);
@@ -886,13 +890,17 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
                   </div>
                   <ClientCombobox clients={clients} value={clientId} onChange={setClientId} onCreateClient={(name) => alert('Please add clients via Settings.')} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
                     <label className={labelCls}>Project Name</label>
                     <input type="text" value={refName} onChange={(e) => setRefName(e.target.value)}
                       placeholder="e.g. TVC Spring Campaign" className={inputCls} />
                   </div>
                   <div>
+                    <label className={labelCls}>Document Date</label>
+                    <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inputCls + ' text-white/80'} />
+                  </div>
+                  <div className="sm:col-span-3">
                     <label className={labelCls}>Status</label>
                     <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls + ' appearance-none'}>
                       {Object.entries(STATUS_CONFIG).map(([k, v]) => (
@@ -1035,6 +1043,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
                     discountPct={discountPct}
                     vatPct={vatPct}
                     whtPct={whtPct}
+                    issueDate={issueDate}
                     refName={refName}
                     sym={sym}
                     overrideDocType={previewDocType}

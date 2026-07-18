@@ -71,6 +71,7 @@ export async function createJob(input) {
     discount_pct:       input.discount_pct || 0,
     vat_pct:            input.vat_pct !== undefined ? input.vat_pct : 7,
     wht_pct:            input.wht_pct || 0,
+    issue_date:         new Date().toISOString().slice(0, 10),
   };
   const { data, error } = await supabase
     .from('doc_quotations')
