@@ -82,11 +82,16 @@ export async function createJob(input) {
 }
 
 export async function updateJob(id, patch, lineItems = null, expenses = null) {
-  // Update quotation core fields
-  if (Object.keys(patch).length > 0) {
+  if (patch) {
+    // Sanitize numeric fields in patch
+    const sanitizedPatch = { ...patch };
+    if ('discount_pct' in sanitizedPatch) sanitizedPatch.discount_pct = Number(sanitizedPatch.discount_pct) || 0;
+    if ('vat_pct' in sanitizedPatch) sanitizedPatch.vat_pct = Number(sanitizedPatch.vat_pct) || 0;
+    if ('wht_pct' in sanitizedPatch) sanitizedPatch.wht_pct = Number(sanitizedPatch.wht_pct) || 0;
+
     const { error } = await supabase
       .from('doc_quotations')
-      .update(patch)
+      .update(sanitizedPatch)
       .eq('id', id);
     if (error) throw error;
   }
@@ -98,8 +103,8 @@ export async function updateJob(id, patch, lineItems = null, expenses = null) {
       const itemsToInsert = lineItems.map(li => ({
         quotation_id: id,
         description: li.description || '',
-        qty: li.qty !== undefined ? li.qty : (li.quantity || 1),
-        unit_price: li.unit_price !== undefined ? li.unit_price : (li.price_per_unit || 0),
+        qty: Number(li.qty !== undefined ? li.qty : (li.quantity || 1)) || 0,
+        unit_price: Number(li.unit_price !== undefined ? li.unit_price : (li.price_per_unit || 0)) || 0,
         unit_name: li.unit_name || ''
       }));
       await supabase.from('doc_line_items').insert(itemsToInsert);
@@ -114,7 +119,7 @@ export async function updateJob(id, patch, lineItems = null, expenses = null) {
         quotation_id: id,
         category: ex.category || ex.type || '',
         description: ex.description || ex.expense_name || ex.label || '',
-        amount: ex.amount || ex.value || 0,
+        amount: Number(ex.amount || ex.value) || 0,
         expense_date: ex.expense_date || ex.date || null,
         is_paid: ex.is_paid || ex.paid || false,
         x: ex.x || 0,
