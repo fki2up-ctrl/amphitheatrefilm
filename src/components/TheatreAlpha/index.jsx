@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import {
   listJobs, createJob, updateJob, deleteJob,
   getSettings, upsertSettings,
+  getClients, getProfiles
 } from '../../lib/theatreAlpha';
 import SidebarNav from './SidebarNav';
 import ProductionSchedule from './ProductionSchedule';
@@ -24,15 +25,19 @@ export default function TheatreAlpha() {
   const [settings, setSettings] = useState({
     currency_code: 'THB', currency_symbol: '฿', tax_rate_pct: 3,
   });
+  const [clients, setClients] = useState([]);
+  const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
 
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const [j, s] = await Promise.all([listJobs(), getSettings()]);
+      const [j, s, c, p] = await Promise.all([listJobs(), getSettings(), getClients(), getProfiles()]);
       setJobs(j);
       setSettings(s);
+      setClients(c);
+      setProfiles(p);
       setError('');
     } catch (e) {
       setError(e.message || String(e));
@@ -51,8 +56,8 @@ export default function TheatreAlpha() {
     return row;
   };
 
-  const onUpdate = async (id, patch) => {
-    const row = await updateJob(id, patch);
+  const onUpdate = async (id, patch, lineItems, expenses) => {
+    const row = await updateJob(id, patch, lineItems, expenses);
     setJobs((prev) => prev.map((j) => (j.id === id ? row : j)));
     return row;
   };
@@ -96,6 +101,7 @@ export default function TheatreAlpha() {
             {view === 'schedule' && (
               <ProductionSchedule
                 jobs={jobs}
+                clients={clients}
                 settings={settings}
                 onCreate={onCreate}
                 onUpdate={onUpdate}
@@ -110,12 +116,23 @@ export default function TheatreAlpha() {
               />
             )}
             {view === 'documents' && (
-              <DocumentManager settings={settings} />
+              <DocumentManager 
+                settings={settings} 
+                jobs={jobs} 
+                clients={clients} 
+                profiles={profiles}
+                onUpdateJob={onUpdate}
+                onCreateJob={onCreate}
+              />
             )}
             {view === 'settings' && (
               <Settings
                 settings={settings}
                 onSaveSettings={onSaveSettings}
+                clients={clients}
+                setClients={setClients}
+                profiles={profiles}
+                setProfiles={setProfiles}
               />
             )}
           </motion.div>

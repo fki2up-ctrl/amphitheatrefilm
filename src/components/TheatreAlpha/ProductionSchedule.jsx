@@ -14,15 +14,17 @@ import { Plus } from 'lucide-react';
 import JobModal from './JobModal';
 import { statusColor } from '../../lib/finance';
 
-export default function ProductionSchedule({ jobs, settings, onCreate, onUpdate, onDelete }) {
+export default function ProductionSchedule({ jobs, clients, settings, onCreate, onUpdate, onDelete }) {
   const calRef = useRef(null);
   const [modal, setModal] = useState({ open: false, job: null, defaultStart: null });
 
   const events = useMemo(() => jobs.map((j) => {
-    const c = statusColor(j.payment_status);
+    const c = statusColor(j.status || 'draft');
+    const clientName = clients.find(c => c.id === j.client_id)?.company_name;
+    const titleStr = j.project_name || j.reference_name || 'Untitled';
     return {
       id: j.id,
-      title: j.client ? `${j.title} — ${j.client}` : j.title,
+      title: clientName ? `${titleStr} — ${clientName}` : titleStr,
       start: j.start_at,
       end:   j.end_at,
       backgroundColor: c.bg,
@@ -30,7 +32,7 @@ export default function ProductionSchedule({ jobs, settings, onCreate, onUpdate,
       textColor: '#fff',
       extendedProps: { job: j },
     };
-  }), [jobs]);
+  }), [jobs, clients]);
 
   const openNew = (start) => setModal({ open: true, job: null, defaultStart: start || new Date() });
   const openEdit = (job)  => setModal({ open: true, job, defaultStart: null });
@@ -39,12 +41,9 @@ export default function ProductionSchedule({ jobs, settings, onCreate, onUpdate,
   const saveFromModal = async (form) => {
     if (modal.job?.id) {
       await onUpdate(modal.job.id, {
-        title: form.title, client: form.client,
+        project_name: form.title, client_id: form.client_id,
         start_at: form.start_at, end_at: form.end_at,
-        amount: form.amount, billing_cycle_days: form.billing_cycle_days,
-        payment_status: form.payment_status, notes: form.notes,
-        paid_at: form.payment_status === 'paid'
-          ? (form.paid_at || new Date().toISOString()) : null,
+        status: form.payment_status, notes: form.notes,
       });
     } else {
       await onCreate(form);
@@ -114,6 +113,7 @@ export default function ProductionSchedule({ jobs, settings, onCreate, onUpdate,
         onClose={closeModal}
         onSave={saveFromModal}
         onDelete={onDelete}
+        clients={clients}
       />
 
       {/* Local FullCalendar dark-theme overrides. Scoped via .ta-fc-host. */}

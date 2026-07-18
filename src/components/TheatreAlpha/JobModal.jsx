@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Trash2, Loader2 } from 'lucide-react';
 
-const STATUSES = ['unpaid', 'invoiced', 'paid', 'overdue'];
+const STATUSES = ['draft', 'quoted', 'po_received', 'invoiced', 'paid'];
 
 // Convert ISO string to local "YYYY-MM-DDTHH:mm" for <input type=datetime-local>.
 function toLocalInput(iso) {
@@ -23,7 +23,7 @@ function fromLocalInput(local) {
   return new Date(local).toISOString();
 }
 
-export default function JobModal({ open, job, defaultStart, onClose, onSave, onDelete, currencySymbol }) {
+export default function JobModal({ open, job, defaultStart, onClose, onSave, onDelete, currencySymbol, clients = [] }) {
   const isNew = !job?.id;
 
   const [form, setForm] = useState(blank(defaultStart));
@@ -34,17 +34,21 @@ export default function JobModal({ open, job, defaultStart, onClose, onSave, onD
     const startIso = start ? new Date(start).toISOString() : new Date().toISOString();
     const endIso   = new Date(new Date(startIso).getTime() + 60 * 60 * 1000).toISOString();
     return {
-      title: '', client: '',
+      title: '', client_id: '',
       start_at: startIso, end_at: endIso,
-      amount: 0, billing_cycle_days: 30,
-      payment_status: 'unpaid', notes: '',
+      payment_status: 'draft', notes: '',
     };
   }
 
   useEffect(() => {
     if (!open) return;
     setErr('');
-    setForm(job ? { ...job } : blank(defaultStart));
+    setForm(job ? { 
+      ...job, 
+      title: job.project_name || job.reference_name || '',
+      client_id: job.client_id || '',
+      payment_status: job.status || 'draft'
+    } : blank(defaultStart));
   }, [open, job, defaultStart]);
 
   if (!open) return null;
@@ -117,10 +121,12 @@ export default function JobModal({ open, job, defaultStart, onClose, onSave, onD
             </Field>
 
             <Field label="Client">
-              <input type="text"
-                value={form.client || ''}
-                onChange={(e) => set({ client: e.target.value })}
-                className={inputCls} />
+              <select value={form.client_id || ''}
+                onChange={(e) => set({ client_id: e.target.value })}
+                className={inputCls + ' appearance-none'}>
+                <option value="">-- No Client --</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+              </select>
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
@@ -138,20 +144,7 @@ export default function JobModal({ open, job, defaultStart, onClose, onSave, onD
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={`Amount (${currencySymbol})`}>
-                <input type="number" step="0.01" min="0"
-                  value={form.amount}
-                  onChange={(e) => set({ amount: Number(e.target.value) })}
-                  className={inputCls} />
-              </Field>
-              <Field label="Billing cycle (days)">
-                <input type="number" step="1" min="0"
-                  value={form.billing_cycle_days}
-                  onChange={(e) => set({ billing_cycle_days: Number(e.target.value) })}
-                  className={inputCls} />
-              </Field>
-            </div>
+
 
             <Field label="Status">
               <select value={form.payment_status}

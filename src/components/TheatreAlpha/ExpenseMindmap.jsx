@@ -197,10 +197,11 @@ const CATEGORY_MAP = {
 };
 
 function categorizeExpense(name) {
+  if (!name) return 'Production';
   for (const [cat, keywords] of Object.entries(CATEGORY_MAP)) {
-    if (keywords.some((kw) => name.includes(kw))) return cat;
+    if (keywords.some(k => name.toLowerCase().includes(k.toLowerCase()))) return cat;
   }
-  return 'Other';
+  return 'Production'; // default fallback
 }
 
 // ---------------------------------------------------------------------------
@@ -273,7 +274,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
     if (!initialized.current) {
       const total = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
       const grouped = { Crew: [], Equipment: [], Location: [], Production: [], Other: [] };
-      expenses.forEach(ex => grouped[categorizeExpense(ex.expense_name)].push(ex));
+      expenses.forEach(ex => grouped[categorizeExpense(ex.description || ex.expense_name)].push(ex));
 
       const newNodes = [];
       const newEdges = [];
@@ -312,7 +313,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
           const exId = ex.id;
           newNodes.push({
             id: exId, type: 'expense', position: { x: expStartX + ei * expSpacing, y: 280 + Math.random() * 20 },
-            data: { label: ex.expense_name, amount: formatMoney(Number(ex.amount) || 0, sym), rawAmount: Number(ex.amount) || 0, date: ex.date, onFocus: pushUndoState },
+            data: { label: ex.description || ex.expense_name, amount: formatMoney(Number(ex.amount) || 0, sym), rawAmount: Number(ex.amount) || 0, date: ex.expense_date || ex.date, onFocus: pushUndoState },
           });
 
           newEdges.push({
@@ -340,9 +341,9 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
         if (n.type !== 'expense') return n;
         const matched = expenses.find(e => e.id === n.id);
         if (matched) {
-          if (n.data.label !== matched.expense_name || n.data.rawAmount !== Number(matched.amount)) {
+          if (n.data.label !== (matched.description || matched.expense_name) || n.data.rawAmount !== Number(matched.amount)) {
             changed = true;
-            return { ...n, data: { ...n.data, label: matched.expense_name, rawAmount: Number(matched.amount), amount: formatMoney(Number(matched.amount) || 0, sym), date: matched.date, onFocus: pushUndoState } };
+            return { ...n, data: { ...n.data, label: matched.description || matched.expense_name, rawAmount: Number(matched.amount), amount: formatMoney(Number(matched.amount) || 0, sym), date: matched.expense_date || matched.date, onFocus: pushUndoState } };
           }
         }
         return n;
@@ -357,7 +358,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
             id: ex.id,
             type: 'expense',
             position: { x: 300 + (Math.random() * 50 - 25), y: 350 + (i * 20) }, // fallback position
-            data: { label: ex.expense_name, amount: formatMoney(Number(ex.amount) || 0, sym), rawAmount: Number(ex.amount) || 0, date: ex.date, onFocus: pushUndoState }
+            data: { label: ex.description || ex.expense_name, amount: formatMoney(Number(ex.amount) || 0, sym), rawAmount: Number(ex.amount) || 0, date: ex.expense_date || ex.date, onFocus: pushUndoState }
           });
         }
       });
@@ -414,9 +415,10 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
       const expNodes = nds.filter(n => n.type === 'expense');
       const newExpenses = expNodes.map(n => ({
         id: n.id,
-        expense_name: n.data.label,
+        description: n.data.label,
+        category: categorizeExpense(n.data.label),
         amount: Number(n.data.rawAmount) || 0,
-        date: n.data.date || new Date().toISOString().slice(0, 10)
+        expense_date: n.data.date || new Date().toISOString().slice(0, 10)
       }));
       onExpensesChange(newExpenses);
     }, 100);

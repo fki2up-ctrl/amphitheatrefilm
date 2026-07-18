@@ -28,85 +28,14 @@ import { generateQtNumber, uploadPOFile } from '../../lib/documents';
 import { hasSupabase } from '../../lib/supabase';
 import ExpenseMindmap from './ExpenseMindmap';
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
 
-const MOCK_CLIENTS = [
-  { id: 'c1', company_name: 'Siam Pictures Co.', address: '123 Sukhumvit Rd, Bangkok', tax_id: '0105560123456' },
-  { id: 'c2', company_name: 'Thai Film Studios', address: '45 Ratchadaphisek Rd, Bangkok', tax_id: '0105560789012' },
-  { id: 'c3', company_name: 'Mekong Productions', address: '88 Charoen Krung Rd, Bangkok', tax_id: '0105560345678' },
-  { id: 'c4', company_name: 'บริษัท อากะอินเตอร์ฟู้ดส์ จำกัด', address: '99 ถ.เพชรบุรี กรุงเทพฯ', tax_id: '0105561234567' },
-  { id: 'c5', company_name: 'บริษัท แกรมมี่ โกลด์ จำกัด', address: '121 ถ.ลาดพร้าว กรุงเทพฯ', tax_id: '0105562345678' },
-  { id: 'c6', company_name: 'บริษัท ปตท. จำกัด (มหาชน)', address: '555 ถ.วิภาวดีรังสิต กรุงเทพฯ', tax_id: '0107545000169' },
-];
-
-const MOCK_PROJECTS = [
-  {
-    id: 'p1', client_id: 'c1', reference_name: 'TVC — Spring Campaign 2026',
-    qt_number: 'QT260610-001', po_number: 'PO-SP-2026-0042', po_file_url: null,
-    status: 'paid', created_at: '2026-06-10T09:00:00Z',
-    discount_pct: 5, vat_pct: 7, wht_pct: 3,
-    line_items: [
-      { id: 'l1', service_name: 'Director\'s Fee', quantity: 1, price_per_unit: 120000, unit_name: 'project' },
-      { id: 'l2', service_name: 'Camera Package (RED V-Raptor)', quantity: 3, price_per_unit: 25000, unit_name: 'day' },
-      { id: 'l3', service_name: 'Color Grading', quantity: 1, price_per_unit: 35000, unit_name: 'project' },
-      { id: 'l4', service_name: 'Sound Design & Mix', quantity: 1, price_per_unit: 28000, unit_name: 'project' },
-    ],
-    expenses: [
-      { id: 'e1', expense_name: 'Crew (Gaffer + G&E)', amount: 45000, date: '2026-06-12' },
-      { id: 'e2', expense_name: 'Location Permit — Grand Palace', amount: 15000, date: '2026-06-13' },
-      { id: 'e3', expense_name: 'Catering (3 days)', amount: 9000, date: '2026-06-14' },
-    ],
-  },
-  {
-    id: 'p2', client_id: 'c4', reference_name: 'โฆษณา — แคมเปญฤดูร้อน',
-    qt_number: 'QT260625-001', po_number: '', po_file_url: null,
-    status: 'invoiced', created_at: '2026-06-25T14:00:00Z',
-    discount_pct: 0, vat_pct: 7, wht_pct: 3,
-    line_items: [
-      { id: 'l5', service_name: 'Director\'s Fee', quantity: 1, price_per_unit: 85000, unit_name: 'project' },
-      { id: 'l6', service_name: 'Drone Operations', quantity: 2, price_per_unit: 18000, unit_name: 'day' },
-      { id: 'l7', service_name: 'Post-Production Edit', quantity: 1, price_per_unit: 40000, unit_name: 'project' },
-    ],
-    expenses: [
-      { id: 'e4', expense_name: 'Drone Pilot', amount: 12000, date: '2026-06-26' },
-      { id: 'e5', expense_name: 'Equipment Transport', amount: 5000, date: '2026-06-26' },
-    ],
-  },
-  {
-    id: 'p3', client_id: 'c3', reference_name: 'Documentary — "River of Light"',
-    qt_number: 'QT260710-001', po_number: '', po_file_url: null,
-    status: 'quoted', created_at: '2026-07-10T10:30:00Z',
-    discount_pct: 0, vat_pct: 7, wht_pct: 0,
-    line_items: [
-      { id: 'l8', service_name: 'Director + DP Package', quantity: 10, price_per_unit: 15000, unit_name: 'day' },
-      { id: 'l9', service_name: 'Interview Setup (2-cam)', quantity: 6, price_per_unit: 8000, unit_name: 'session' },
-      { id: 'l10', service_name: 'Offline + Online Edit', quantity: 1, price_per_unit: 65000, unit_name: 'project' },
-    ],
-    expenses: [
-      { id: 'e6', expense_name: 'Travel — Chiang Rai', amount: 18000, date: '2026-07-15' },
-    ],
-  },
-  {
-    id: 'p4', client_id: 'c5', reference_name: 'มิวสิควิดีโอ — "เสียงเงียบ"',
-    qt_number: 'QT260714-002', po_number: '', po_file_url: null,
-    status: 'draft', created_at: '2026-07-14T08:00:00Z',
-    discount_pct: 10, vat_pct: 7, wht_pct: 3,
-    line_items: [
-      { id: 'l11', service_name: 'Content Direction (5 reels)', quantity: 5, price_per_unit: 12000, unit_name: 'reel' },
-      { id: 'l12', service_name: 'Editing & Motion GFX', quantity: 5, price_per_unit: 6000, unit_name: 'reel' },
-    ],
-    expenses: [],
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Financial calculations — VAT (added to total) + WHT (deducted for payable)
 // ---------------------------------------------------------------------------
 
 function calcLineItemsTotal(items) {
-  return items.reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.price_per_unit) || 0), 0);
+  return items.reduce((sum, it) => sum + (Number(it.qty !== undefined ? it.qty : it.quantity) || 0) * (Number(it.unit_price !== undefined ? it.unit_price : it.price_per_unit) || 0), 0);
 }
 
 function calcExpensesTotal(expenses) {
@@ -150,12 +79,13 @@ function StatusBadge({ status }) {
 // DocumentManager — main export
 // ---------------------------------------------------------------------------
 
-export default function DocumentManager({ settings }) {
+export default function DocumentManager({ settings, jobs = [], clients = [], profiles = [], onUpdateJob, onCreateJob }) {
   const sym = settings?.currency_symbol || '฿';
-  const [projects, setProjects] = useState(MOCK_PROJECTS);
-  const [clients, setClients] = useState(MOCK_CLIENTS);
   const [selectedId, setSelectedId] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
+
+  // Note: projects are now passed as `jobs`.
+  const projects = jobs;
 
   const selected = useMemo(
     () => projects.find((p) => p.id === selectedId) || null,
@@ -164,53 +94,31 @@ export default function DocumentManager({ settings }) {
 
   const openEditor = (id) => { setSelectedId(id); setEditorOpen(true); };
 
-  const openNew = () => {
+  const openNew = async () => {
     const seq = projects.length + 1;
     const now = new Date();
-    const newProject = {
-      id: `p-${Date.now()}`,
-      client_id: '',
-      reference_name: '',
+    
+    // We create a draft on the backend right away, or we could just open it empty.
+    // For simplicity, we'll create it.
+    const newProject = await onCreateJob({
       qt_number: generateQtNumber(seq, now),
-      po_number: '', po_file_url: null,
+      project_name: 'New Quotation',
       status: 'draft',
-      created_at: now.toISOString(),
       discount_pct: 0, vat_pct: 7, wht_pct: 3,
-      line_items: [],
-      expenses: [],
-    };
-    setProjects((prev) => [newProject, ...prev]);
+    });
+    
     setSelectedId(newProject.id);
     setEditorOpen(true);
   };
 
-  const updateProject = (id, patch) => {
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-  };
 
-  const deleteProject = (id) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-    if (selectedId === id) { setSelectedId(null); setEditorOpen(false); }
-  };
-
-  const addClient = (name) => {
-    const nc = { id: `c-${Date.now()}`, company_name: name, address: '', tax_id: '' };
-    setClients((prev) => [...prev, nc]);
-    return nc;
-  };
-
-  const addClientFull = (data) => {
-    const nc = { id: `c-${Date.now()}`, ...data };
-    setClients((prev) => [...prev, nc]);
-    return nc;
-  };
 
   // Metrics
   const metrics = useMemo(() => {
     let totalRevenue = 0, totalExpenses = 0, totalProfit = 0, paidCount = 0, openCount = 0;
     for (const p of projects) {
-      const { grandTotal } = calcTotals(p.line_items, p.discount_pct, p.vat_pct, p.wht_pct);
-      const expTotal = calcExpensesTotal(p.expenses);
+      const { grandTotal } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
+      const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
       totalRevenue += grandTotal;
       totalExpenses += expTotal;
       totalProfit += grandTotal - expTotal;
@@ -261,26 +169,23 @@ export default function DocumentManager({ settings }) {
             </thead>
             <tbody>
               {projects.map((p) => {
-                const { grandTotal } = calcTotals(p.line_items, p.discount_pct, p.vat_pct, p.wht_pct);
-                const expTotal = calcExpensesTotal(p.expenses);
+                const { grandTotal } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
+                const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
                 const profit = grandTotal - expTotal;
                 const client = clients.find((c) => c.id === p.client_id);
                 const isSelected = p.id === selectedId;
                 return (
                   <tr key={p.id} onClick={() => openEditor(p.id)}
-                    className={['border-b border-white/5 cursor-pointer transition-colors', isSelected ? 'bg-white/8' : 'hover:bg-white/[0.03]'].join(' ')}>
-                    <td className="px-4 py-3 font-mono text-white/70">{p.qt_number}</td>
-                    <td className="px-4 py-3 text-white">{p.reference_name || '(untitled)'}</td>
-                    <td className="px-4 py-3 text-white/60 hidden sm:table-cell">{client?.company_name || '—'}</td>
+                    className={`group cursor-pointer border-b transition-colors ${isSelected ? 'bg-white/[0.04] border-white/10' : 'border-white/5 hover:bg-white/[0.02]'}`}>
+                    <td className="px-4 py-3 font-medium text-white">{p.qt_number}</td>
+                    <td className="px-4 py-3 text-white/70 truncate max-w-[200px]">{p.project_name || p.reference_name || '(untitled)'}</td>
+                    <td className="px-4 py-3 text-white/50 truncate max-w-[150px] hidden sm:table-cell">{client?.company_name || '—'}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                     <td className="px-4 py-3 text-right text-white font-mono">{formatMoney(grandTotal, sym)}</td>
                     <td className={`px-4 py-3 text-right font-mono hidden md:table-cell ${profit >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
                       {formatMoney(profit, sym)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button onClick={(e) => { e.stopPropagation(); deleteProject(p.id); }} className="text-white/20 hover:text-red-400 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </td>
                   </tr>
                 );
@@ -306,13 +211,14 @@ export default function DocumentManager({ settings }) {
       <AnimatePresence>
         {editorOpen && selected && (
           <DocumentEditor
-            project={selected}
+            p={selected}
             clients={clients}
-            sym={sym}
-            onUpdate={(patch) => updateProject(selected.id, patch)}
-            onAddClient={addClient}
-            onAddClientFull={addClientFull}
+            profiles={profiles}
+            settings={settings}
+            onUpdate={async (patch, lineItems, expenses) => { await onUpdateJob(selected.id, patch, lineItems, expenses); }}
             onClose={() => setEditorOpen(false)}
+            onDelete={() => { setEditorOpen(false); }}
+            sym={sym}
           />
         )}
       </AnimatePresence>
@@ -344,8 +250,9 @@ function MetricCard({ label, value, sub, accent = 'text-white', icon: Icon }) {
 function ProfitabilityPanel({ project, clients, sym }) {
   const p = project;
   const client = clients.find((c) => c.id === p.client_id);
-  const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(p.line_items, p.discount_pct, p.vat_pct, p.wht_pct);
-  const expTotal = calcExpensesTotal(p.expenses);
+  const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
+  const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
+  console.log('[DEBUG ProfitabilityPanel] doc_expenses:', p.doc_expenses, 'expTotal:', expTotal);
   const profit = grandTotal - expTotal;
   const margin = grandTotal > 0 ? Math.round((profit / grandTotal) * 100) : 0;
 
@@ -353,7 +260,7 @@ function ProfitabilityPanel({ project, clients, sym }) {
     <div className="p-4 space-y-5">
       <div>
         <p className="text-[10px] tracking-widest2 uppercase text-white/40">Profitability</p>
-        <h3 className="text-sm text-white mt-1 leading-tight">{p.reference_name || '(untitled)'}</h3>
+        <h3 className="text-sm text-white mt-1 leading-tight">{p.project_name || p.reference_name || '(untitled)'}</h3>
         <p className="text-[10px] text-white/40 mt-0.5">{p.qt_number} · {client?.company_name || 'No client'}</p>
       </div>
       <div className="space-y-2">
@@ -647,7 +554,7 @@ function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtP
   usePreviewFont();
 
   const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(lineItems, discountPct, vatPct, whtPct);
-  const date = new Date(project.created_at);
+  const date = new Date(project.created_at || Date.now());
   const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 
   // Use override if provided, otherwise fall back to project status
@@ -708,13 +615,13 @@ function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtP
             </thead>
             <tbody>
               {lineItems.map((it, i) => {
-                const amount = (Number(it.quantity) || 0) * (Number(it.price_per_unit) || 0);
+                const amount = (Number(it.qty || it.quantity) || 0) * (Number(it.unit_price || it.price_per_unit) || 0);
                 return (
                   <tr key={it.id || i} className="border-b border-gray-100">
-                    <td className="py-[0.5em] pr-1 text-gray-700">{it.service_name || '—'}</td>
-                    <td className="py-[0.5em] text-center text-gray-600">{it.quantity}</td>
+                    <td className="py-[0.5em] pr-1 text-gray-700">{it.description || it.service_name || '—'}</td>
+                    <td className="py-[0.5em] text-center text-gray-600">{it.qty || it.quantity}</td>
                     <td className="py-[0.5em] text-center text-gray-500">{it.unit_name}</td>
-                    <td className="py-[0.5em] text-right text-gray-600 font-mono">{fmtNum(it.price_per_unit)}</td>
+                    <td className="py-[0.5em] text-right text-gray-600 font-mono">{fmtNum(it.unit_price || it.price_per_unit)}</td>
                     <td className="py-[0.5em] text-right text-gray-800 font-mono font-medium">{fmtNum(amount)}</td>
                   </tr>
                 );
@@ -775,20 +682,17 @@ function TotalRow({ label, value, light }) {
 // DocumentEditor — split-view (left form + right preview & mindmap)
 // ---------------------------------------------------------------------------
 
-function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddClientFull, onClose }) {
-  const p = project;
-
-  // --- Local form state (now with separate vat/wht) ---
-  const [clientId, setClientId] = useState(p.client_id);
-  const [refName, setRefName] = useState(p.reference_name);
-  const [status, setStatus] = useState(p.status);
-  const [discountPct, setDiscountPct] = useState(p.discount_pct);
-  const [vatPct, setVatPct] = useState(p.vat_pct ?? p.tax_pct ?? 7);
-  const [whtPct, setWhtPct] = useState(p.wht_pct ?? 0);
-  const [poNumber, setPoNumber] = useState(p.po_number);
-  const [poFileUrl, setPoFileUrl] = useState(p.po_file_url);
-  const [lineItems, setLineItems] = useState(p.line_items);
-  const [expenses, setExpenses] = useState(p.expenses);
+function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onDelete, sym }) {
+  const [clientId, setClientId] = useState(p.client_id || '');
+  const [refName, setRefName] = useState(p.project_name || p.reference_name || '');
+  const [status, setStatus] = useState(p.status || 'draft');
+  const [discountPct, setDiscountPct] = useState(p.discount_pct || 0);
+  const [vatPct, setVatPct] = useState(p.vat_pct !== undefined ? p.vat_pct : 7);
+  const [whtPct, setWhtPct] = useState(p.wht_pct || 0);
+  const [poNumber, setPoNumber] = useState(p.po_number || '');
+  const [poFileUrl, setPoFileUrl] = useState(p.po_file_url || null);
+  const [lineItems, setLineItems] = useState(p.doc_line_items || p.line_items || []);
+  const [expenses, setExpenses] = useState(p.doc_expenses || p.expenses || []);
   const [clientModalOpen, setClientModalOpen] = useState(false);
 
   // --- Resizable panel ---
@@ -842,7 +746,7 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
 
   // --- Manual Save Tracking ---
   const currentStateStr = JSON.stringify({
-    client_id: clientId, reference_name: refName, status,
+    client_id: clientId, project_name: refName, status,
     discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
     po_number: poNumber, po_file_url: poFileUrl,
     line_items: lineItems, expenses,
@@ -856,11 +760,10 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
     setIsSaving(true);
     try {
       await onUpdate({
-        client_id: clientId, reference_name: refName, status,
+        client_id: clientId, project_name: refName, status,
         discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
         po_number: poNumber, po_file_url: poFileUrl,
-        line_items: lineItems, expenses,
-      });
+      }, lineItems, expenses);
       setInitialStateStr(currentStateStr);
     } catch (err) {
       console.error('[Save Error]', err);
@@ -970,22 +873,6 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
             className="shrink-0 min-w-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-[#141416] overflow-y-auto pretty-scroll relative flex flex-col"
             style={{ width: formWidth }}
           >
-            {/* Form Resize handle */}
-            <div
-              ref={formDragRef}
-              onMouseDown={() => setFormDragging(true)}
-              onTouchStart={() => setFormDragging(true)}
-              className={[
-                'absolute right-0 top-0 bottom-0 w-2 z-30 cursor-col-resize flex items-center justify-center group transition-colors',
-                formDragging ? 'bg-white/10' : 'hover:bg-white/5',
-              ].join(' ')}
-            >
-              <div className={[
-                'w-0.5 h-10 rounded-full transition-colors',
-                formDragging ? 'bg-white/30' : 'bg-white/10 group-hover:bg-white/20',
-              ].join(' ')} />
-            </div>
-
             <div className="px-5 py-5 space-y-5">
 
               {/* Meta */}
@@ -998,7 +885,7 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
                       <Settings2 className="w-3 h-3" /> <Plus className="w-2.5 h-2.5" />
                     </button>
                   </div>
-                  <ClientCombobox clients={clients} value={clientId} onChange={setClientId} onCreateClient={onAddClient} />
+                  <ClientCombobox clients={clients} value={clientId} onChange={setClientId} onCreateClient={(name) => alert('Please add clients via Settings.')} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1083,6 +970,23 @@ function DocumentEditor({ project, clients, sym, onUpdate, onAddClient, onAddCli
 
           {/* ====== MIDDLE PANE — Interactive Expense Mindmap ====== */}
           <div className="shrink-0 lg:flex-1 min-w-0 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#1a1a1e] flex flex-col relative">
+            
+            {/* Form Resize handle (moved here to avoid scrollbar clash) */}
+            <div
+              ref={formDragRef}
+              onMouseDown={() => setFormDragging(true)}
+              onTouchStart={() => setFormDragging(true)}
+              className={[
+                'absolute left-0 top-0 bottom-0 w-2 z-30 cursor-col-resize flex items-center justify-center group transition-colors -ml-1',
+                formDragging ? 'bg-white/10' : 'hover:bg-white/5',
+              ].join(' ')}
+            >
+              <div className={[
+                'w-0.5 h-10 rounded-full transition-colors',
+                formDragging ? 'bg-white/30' : 'bg-white/10 group-hover:bg-white/20',
+              ].join(' ')} />
+            </div>
+
             <div className="w-full flex-1 flex flex-col">
               <ExpenseMindmap
                 expenses={expenses}
@@ -1185,7 +1089,7 @@ function EditorSection({ title, hint, children }) {
 // ---------------------------------------------------------------------------
 
 function LineItemsEditor({ items, onChange, sym }) {
-  const add = () => onChange([...items, { id: `li-${Date.now()}`, service_name: '', quantity: 1, price_per_unit: 0, unit_name: 'unit' }]);
+  const add = () => onChange([...items, { id: `li-${Date.now()}`, description: '', qty: 1, unit_price: 0, unit_name: 'unit' }]);
   const remove = (idx) => onChange(items.filter((_, i) => i !== idx));
   const update = (idx, key, val) => onChange(items.map((it, i) => (i === idx ? { ...it, [key]: val } : it)));
 
@@ -1200,10 +1104,10 @@ function LineItemsEditor({ items, onChange, sym }) {
       )}
       {items.map((it, i) => (
         <div key={it.id || i} className="grid grid-cols-[1fr_50px_60px_72px_28px] gap-1 items-center">
-          <input value={it.service_name} onChange={(e) => update(i, 'service_name', e.target.value)} placeholder="Service name" className={cellCls} />
-          <input type="number" min="0" step="1" value={it.quantity} onChange={(e) => update(i, 'quantity', e.target.value)} className={cellCls + ' text-center'} />
-          <input value={it.unit_name} onChange={(e) => update(i, 'unit_name', e.target.value)} placeholder="unit" className={cellCls} />
-          <input type="number" min="0" step="100" value={it.price_per_unit} onChange={(e) => update(i, 'price_per_unit', e.target.value)} className={cellCls + ' text-right'} />
+          <input value={it.description || it.service_name || ''} onChange={(e) => update(i, 'description', e.target.value)} placeholder="Service name" className={cellCls} />
+          <input type="number" min="0" step="1" value={it.qty !== undefined ? it.qty : (it.quantity || '')} onChange={(e) => update(i, 'qty', e.target.value)} className={cellCls + ' text-center'} />
+          <input value={it.unit_name || ''} onChange={(e) => update(i, 'unit_name', e.target.value)} placeholder="unit" className={cellCls} />
+          <input type="number" min="0" step="100" value={it.unit_price !== undefined ? it.unit_price : (it.price_per_unit || '')} onChange={(e) => update(i, 'unit_price', e.target.value)} className={cellCls + ' text-right'} />
           <button type="button" onClick={() => remove(i)} className="w-6 h-6 flex items-center justify-center rounded text-white/20 hover:text-red-400 transition-colors">
             <Trash2 className="w-3 h-3" />
           </button>
@@ -1221,7 +1125,7 @@ function LineItemsEditor({ items, onChange, sym }) {
 // ---------------------------------------------------------------------------
 
 function ExpensesEditor({ items, onChange, sym }) {
-  const add = () => onChange([...items, { id: `ex-${Date.now()}`, expense_name: '', amount: 0, date: new Date().toISOString().slice(0, 10) }]);
+  const add = () => onChange([...items, { id: `ex-${Date.now()}`, description: '', category: '', amount: 0, expense_date: new Date().toISOString().slice(0, 10) }]);
   const remove = (idx) => onChange(items.filter((_, i) => i !== idx));
   const update = (idx, key, val) => onChange(items.map((it, i) => (i === idx ? { ...it, [key]: val } : it)));
 
@@ -1237,9 +1141,9 @@ function ExpensesEditor({ items, onChange, sym }) {
       )}
       {items.map((it, i) => (
         <div key={it.id || i} className="grid grid-cols-[1fr_90px_80px_28px] gap-1 items-center">
-          <input value={it.expense_name} onChange={(e) => update(i, 'expense_name', e.target.value)} placeholder="e.g. Crew, Equipment" className={cellCls} />
-          <input type="date" value={it.date} onChange={(e) => update(i, 'date', e.target.value)} className={cellCls + ' text-white/60'} />
-          <input type="number" min="0" step="100" value={it.amount} onChange={(e) => update(i, 'amount', e.target.value)} className={cellCls + ' text-right'} />
+          <input value={it.description || it.expense_name || ''} onChange={(e) => update(i, 'description', e.target.value)} placeholder="e.g. Crew, Equipment" className={cellCls} />
+          <input type="date" value={it.expense_date || it.date || ''} onChange={(e) => update(i, 'expense_date', e.target.value)} className={cellCls + ' text-white/60'} />
+          <input type="number" min="0" step="100" value={it.amount || 0} onChange={(e) => update(i, 'amount', e.target.value)} className={cellCls + ' text-right'} />
           <button type="button" onClick={() => remove(i)} className="w-6 h-6 flex items-center justify-center rounded text-white/20 hover:text-red-400 transition-colors">
             <Trash2 className="w-3 h-3" />
           </button>

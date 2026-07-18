@@ -186,3 +186,101 @@ create policy "anon write assets"
 -- `site_settings`, and `assets` tables. `site_settings` will have exactly one
 -- seeded row; the others start empty and get populated on first upload/save.
 -- =============================================================================
+
+-- =============================================================================
+-- THEATRE ALPHA — Studio Operations, Financials, & Documents
+-- =============================================================================
+
+drop table if exists public.doc_expenses cascade;
+drop table if exists public.doc_line_items cascade;
+drop table if exists public.doc_quotations cascade;
+drop table if exists public.alpha_clients cascade;
+drop table if exists public.alpha_profiles cascade;
+
+-- ---------------------------------------------------------------------------
+-- alpha_profiles (Issuer/Company profiles)
+-- ---------------------------------------------------------------------------
+create table if not exists public.alpha_profiles (
+  id uuid primary key default uuid_generate_v4(),
+  company_name text not null,
+  tax_id text,
+  address text,
+  email text,
+  phone text,
+  logo_url text,
+  is_default boolean default false,
+  created_at timestamptz not null default now()
+);
+alter table public.alpha_profiles enable row level security;
+drop policy if exists "alpha_profiles access" on public.alpha_profiles;
+create policy "alpha_profiles access" on public.alpha_profiles for all using (true) with check (true);
+
+-- ---------------------------------------------------------------------------
+-- alpha_clients (CRM)
+-- ---------------------------------------------------------------------------
+create table if not exists public.alpha_clients (
+  id uuid primary key default uuid_generate_v4(),
+  company_name text not null,
+  tax_id text,
+  address text,
+  created_at timestamptz not null default now()
+);
+alter table public.alpha_clients enable row level security;
+drop policy if exists "alpha_clients access" on public.alpha_clients;
+create policy "alpha_clients access" on public.alpha_clients for all using (true) with check (true);
+
+-- ---------------------------------------------------------------------------
+-- doc_quotations (Jobs / Invoices)
+-- ---------------------------------------------------------------------------
+create table if not exists public.doc_quotations (
+  id uuid primary key default uuid_generate_v4(),
+  client_id uuid references public.alpha_clients(id) on delete set null,
+  qt_number text not null,
+  project_name text,
+  status text default 'draft', -- draft, quoted, po_received, invoiced, paid
+  start_at timestamptz,
+  end_at timestamptz,
+  discount_pct numeric default 0,
+  vat_pct numeric default 7,
+  wht_pct numeric default 0,
+  notes text,
+  created_at timestamptz not null default now()
+);
+alter table public.doc_quotations enable row level security;
+drop policy if exists "doc_quotations access" on public.doc_quotations;
+create policy "doc_quotations access" on public.doc_quotations for all using (true) with check (true);
+
+-- ---------------------------------------------------------------------------
+-- doc_line_items
+-- ---------------------------------------------------------------------------
+create table if not exists public.doc_line_items (
+  id uuid primary key default uuid_generate_v4(),
+  quotation_id uuid references public.doc_quotations(id) on delete cascade,
+  description text,
+  qty numeric,
+  unit_price numeric,
+  unit_name text,
+  created_at timestamptz not null default now()
+);
+alter table public.doc_line_items enable row level security;
+drop policy if exists "doc_line_items access" on public.doc_line_items;
+create policy "doc_line_items access" on public.doc_line_items for all using (true) with check (true);
+
+-- ---------------------------------------------------------------------------
+-- doc_expenses (Mindmap nodes)
+-- ---------------------------------------------------------------------------
+create table if not exists public.doc_expenses (
+  id uuid primary key default uuid_generate_v4(),
+  quotation_id uuid references public.doc_quotations(id) on delete cascade,
+  category text,
+  description text,
+  amount numeric,
+  expense_date date,
+  is_paid boolean default false,
+  x numeric default 0,
+  y numeric default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.doc_expenses enable row level security;
+drop policy if exists "doc_expenses access" on public.doc_expenses;
+create policy "doc_expenses access" on public.doc_expenses for all using (true) with check (true);
