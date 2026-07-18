@@ -79,7 +79,7 @@ function StatusBadge({ status }) {
 // DocumentManager — main export
 // ---------------------------------------------------------------------------
 
-export default function DocumentManager({ settings, jobs = [], clients = [], profiles = [], onUpdateJob, onCreateJob }) {
+export default function DocumentManager({ settings, jobs = [], clients = [], profiles = [], onUpdateJob, onCreateJob, onDeleteJob }) {
   const sym = settings?.currency_symbol || '฿';
   const [selectedId, setSelectedId] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -117,11 +117,11 @@ export default function DocumentManager({ settings, jobs = [], clients = [], pro
   const metrics = useMemo(() => {
     let totalRevenue = 0, totalExpenses = 0, totalProfit = 0, paidCount = 0, openCount = 0;
     for (const p of projects) {
-      const { grandTotal } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
+      const { netPayable } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
       const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
-      totalRevenue += grandTotal;
+      totalRevenue += netPayable;
       totalExpenses += expTotal;
-      totalProfit += grandTotal - expTotal;
+      totalProfit += netPayable - expTotal;
       if (p.status === 'paid') paidCount++; else openCount++;
     }
     return {
@@ -130,6 +130,23 @@ export default function DocumentManager({ settings, jobs = [], clients = [], pro
       totalProfit: Math.round(totalProfit * 100) / 100,
       paidCount, openCount, count: projects.length,
     };
+  }, [projects]);
+
+  const groupedProjects = useMemo(() => {
+    const groups = {};
+    for (const p of projects) {
+      const d = new Date(p.issue_date || p.created_at || new Date());
+      const monthYear = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!groups[monthYear]) groups[monthYear] = { monthYear, projects: [], revenue: 0, expenses: 0, profit: 0, date: d };
+      
+      const { netPayable } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
+      const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
+      groups[monthYear].projects.push(p);
+      groups[monthYear].revenue += netPayable;
+      groups[monthYear].expenses += expTotal;
+      groups[monthYear].profit += (netPayable - expTotal);
+    }
+    return Object.values(groups).sort((a, b) => b.date - a.date);
   }, [projects]);
 
   return (
@@ -162,50 +179,54 @@ export default function DocumentManager({ settings, jobs = [], clients = [], pro
                 <th className="text-left px-4 py-2.5 font-medium">Project</th>
                 <th className="text-left px-4 py-2.5 font-medium hidden sm:table-cell">Client</th>
                 <th className="text-left px-4 py-2.5 font-medium">Status</th>
-                <th className="text-right px-4 py-2.5 font-medium">Revenue</th>
+                <th className="text-right px-4 py-2.5 font-medium">Net Payable</th>
                 <th className="text-right px-4 py-2.5 font-medium hidden md:table-cell">Profit</th>
                 <th className="w-10" />
               </tr>
             </thead>
-            <tbody>
-              {projects.map((p) => {
-                const { grandTotal } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
-                const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
-                const profit = grandTotal - expTotal;
-                const client = clients.find((c) => c.id === p.client_id);
-                const isSelected = p.id === selectedId;
-                return (
-                  <tr key={p.id} onClick={() => openEditor(p.id)}
-                    className={`group cursor-pointer border-b transition-colors ${isSelected ? 'bg-white/[0.04] border-white/10' : 'border-white/5 hover:bg-white/[0.02]'}`}>
-                    <td className="px-4 py-3 font-medium text-white">{p.qt_number}</td>
-                    <td className="px-4 py-3 text-white/70 truncate max-w-[200px]">{p.project_name || p.reference_name || '(untitled)'}</td>
-                    <td className="px-4 py-3 text-white/50 truncate max-w-[150px] hidden sm:table-cell">{client?.company_name || '—'}</td>
-                    <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-4 py-3 text-right text-white font-mono">{formatMoney(grandTotal, sym)}</td>
-                    <td className={`px-4 py-3 text-right font-mono hidden md:table-cell ${profit >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                      {formatMoney(profit, sym)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                    </td>
-                  </tr>
-                );
-              })}
-              {projects.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-white/30">No quotations yet.</td></tr>
-              )}
-            </tbody>
+            {groupedProjects.map((group) => (
+              <tbody key={group.monthYear}>
+                <tr className="bg-white/[0.03] border-b border-t border-white/10">
+                  <td colSpan={4} className="px-4 py-3 font-semibold text-white text-xs tracking-wide uppercase">{group.monthYear}</td>
+                  <td className="px-4 py-3 text-right text-white/70 font-mono text-xs">{formatMoney(group.revenue, sym)}</td>
+                  <td className={`px-4 py-3 text-right font-mono text-xs hidden md:table-cell ${group.profit >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                    {formatMoney(group.profit, sym)}
+                  </td>
+                  <td />
+                </tr>
+                {group.projects.map((p) => {
+                  const { netPayable } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
+                  const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
+                  const profit = netPayable - expTotal;
+                  const client = clients.find((c) => c.id === p.client_id);
+                  const isSelected = p.id === selectedId;
+                  return (
+                    <tr key={p.id} onClick={() => openEditor(p.id)}
+                      className={`group cursor-pointer border-b transition-colors ${isSelected ? 'bg-white/[0.04] border-white/10' : 'border-white/5 hover:bg-white/[0.02]'}`}>
+                      <td className="px-4 py-3 font-medium text-white">{p.qt_number}</td>
+                      <td className="px-4 py-3 text-white/70 truncate max-w-[200px]">{p.project_name || p.reference_name || '(untitled)'}</td>
+                      <td className="px-4 py-3 text-white/50 truncate max-w-[150px] hidden sm:table-cell">{client?.company_name || '—'}</td>
+                      <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
+                      <td className="px-4 py-3 text-right text-white font-mono">{formatMoney(netPayable, sym)}</td>
+                      <td className={`px-4 py-3 text-right font-mono hidden md:table-cell ${profit >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                        {formatMoney(profit, sym)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            ))}
+            {projects.length === 0 && (
+              <tbody><tr><td colSpan={7} className="px-4 py-12 text-center text-white/30">No quotations yet.</td></tr></tbody>
+            )}
           </table>
         </div>
 
-        <AnimatePresence>
-          {selected && !editorOpen && (
-            <motion.aside initial={{ width: 0, opacity: 0 }} animate={{ width: 320, opacity: 1 }} exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="shrink-0 border-l border-white/10 overflow-y-auto pretty-scroll hidden lg:block">
-              <ProfitabilityPanel project={selected} clients={clients} sym={sym} />
-            </motion.aside>
-          )}
-        </AnimatePresence>
+        <div className="shrink-0 w-[420px] border-l border-white/10 overflow-y-auto pretty-scroll hidden lg:block">
+          <ProfitabilityPanel metrics={metrics} sym={sym} />
+        </div>
       </div>
 
       <AnimatePresence>
@@ -217,7 +238,12 @@ export default function DocumentManager({ settings, jobs = [], clients = [], pro
             settings={settings}
             onUpdate={async (patch, lineItems, expenses) => { await onUpdateJob(selected.id, patch, lineItems, expenses); }}
             onClose={() => setEditorOpen(false)}
-            onDelete={() => { setEditorOpen(false); }}
+            onDelete={async () => {
+              if (window.confirm('Are you sure you want to delete this quotation? This action cannot be undone.')) {
+                await onDeleteJob(selected.id);
+                setEditorOpen(false);
+              }
+            }}
             sym={sym}
           />
         )}
@@ -244,51 +270,35 @@ function MetricCard({ label, value, sub, accent = 'text-white', icon: Icon }) {
 }
 
 // ---------------------------------------------------------------------------
-// ProfitabilityPanel
+// Global ProfitabilityPanel
 // ---------------------------------------------------------------------------
 
-function ProfitabilityPanel({ project, clients, sym }) {
-  const p = project;
-  const client = clients.find((c) => c.id === p.client_id);
-  const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
-  const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
-  const profit = grandTotal - expTotal;
-  const margin = grandTotal > 0 ? Math.round((profit / grandTotal) * 100) : 0;
+function ProfitabilityPanel({ metrics, sym }) {
+  const margin = metrics.totalRevenue > 0 ? Math.round((metrics.totalProfit / metrics.totalRevenue) * 100) : 0;
 
   return (
-    <div className="p-4 space-y-5">
+    <div className="p-6 space-y-6">
       <div>
-        <p className="text-[10px] tracking-widest2 uppercase text-white/40">Profitability</p>
-        <h3 className="text-sm text-white mt-1 leading-tight">{p.project_name || p.reference_name || '(untitled)'}</h3>
-        <p className="text-[10px] text-white/40 mt-0.5">{p.qt_number} · {client?.company_name || 'No client'}</p>
+        <p className="text-[10px] tracking-widest2 uppercase text-white/40">Global Profitability</p>
+        <h3 className="text-base text-white mt-1 leading-tight">All Quotations</h3>
+        <p className="text-[10px] text-white/40 mt-0.5">{metrics.count} total documents</p>
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[10px] uppercase tracking-widest2">
-          <span className="text-white/40">Margin</span>
-          <span className={profit >= 0 ? 'text-emerald-300' : 'text-red-300'}>{margin}%</span>
+          <span className="text-white/40">Total Margin</span>
+          <span className={metrics.totalProfit >= 0 ? 'text-emerald-300' : 'text-red-300'}>{margin}%</span>
         </div>
-        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-700 ${profit >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
+        <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
+          <div className={`h-full rounded-full transition-all duration-700 ${metrics.totalProfit >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
             style={{ width: `${Math.min(Math.abs(margin), 100)}%` }} />
         </div>
       </div>
-      <div className="space-y-1.5 text-xs">
-        <Row label="Subtotal" value={formatMoney(subtotal, sym)} />
-        {discount > 0 && <Row label={`Discount (${p.discount_pct}%)`} value={`−${formatMoney(discount, sym)}`} accent="text-amber-300" />}
-        {vat > 0 && <Row label={`VAT (${p.vat_pct}%)`} value={formatMoney(vat, sym)} accent="text-white/50" />}
-        <div className="border-t border-white/8 pt-1.5">
-          <Row label="Grand Total" value={formatMoney(grandTotal, sym)} bold />
-        </div>
-        {wht > 0 && <Row label={`WHT (${p.wht_pct}%)`} value={`−${formatMoney(wht, sym)}`} accent="text-orange-300" />}
-        {wht > 0 && (
-          <div className="border-t border-white/8 pt-1.5">
-            <Row label="Net Payable" value={formatMoney(netPayable, sym)} bold accent="text-blue-300" />
-          </div>
-        )}
-        <Row label="Total Expenses" value={`−${formatMoney(expTotal, sym)}`} accent="text-amber-300" />
-        <div className="border-t border-white/8 pt-1.5">
-          <Row label="Net Profit" value={formatMoney(profit, sym)}
-            accent={profit >= 0 ? 'text-emerald-300' : 'text-red-300'} bold />
+      <div className="space-y-2 text-sm pt-4">
+        <Row label="Total Net Payable" value={formatMoney(metrics.totalRevenue, sym)} bold />
+        <Row label="Total Expenses" value={`−${formatMoney(metrics.totalExpenses, sym)}`} accent="text-amber-300" />
+        <div className="border-t border-white/8 pt-2 mt-2">
+          <Row label="Total Net Profit" value={formatMoney(metrics.totalProfit, sym)}
+            accent={metrics.totalProfit >= 0 ? 'text-emerald-300' : 'text-red-300'} bold />
         </div>
       </div>
     </div>
@@ -690,6 +700,8 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
   const [vatPct, setVatPct] = useState(p.vat_pct !== undefined ? p.vat_pct : 7);
   const [whtPct, setWhtPct] = useState(p.wht_pct || 0);
   const [issueDate, setIssueDate] = useState(p.issue_date || (p.created_at ? p.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)));
+  const [startAt, setStartAt] = useState(p.start_at ? p.start_at.slice(0, 16) : '');
+  const [endAt, setEndAt] = useState(p.end_at ? p.end_at.slice(0, 16) : '');
   const [poNumber, setPoNumber] = useState(p.po_number || '');
   const [poFileUrl, setPoFileUrl] = useState(p.po_file_url || null);
   const [lineItems, setLineItems] = useState(p.doc_line_items || p.line_items || []);
@@ -775,6 +787,8 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
     client_id: clientId, project_name: refName, status,
     discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
     issue_date: issueDate,
+    start_at: startAt ? new Date(startAt).toISOString() : null,
+    end_at: endAt ? new Date(endAt).toISOString() : null,
     po_number: poNumber, po_file_url: poFileUrl,
     line_items: lineItems, expenses,
   });
@@ -790,6 +804,8 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
         client_id: clientId, project_name: refName, status,
         discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
         issue_date: issueDate || null,
+        start_at: startAt ? new Date(startAt).toISOString() : null,
+        end_at: endAt ? new Date(endAt).toISOString() : null,
         po_number: poNumber, po_file_url: poFileUrl,
       }, lineItems, expenses);
       setInitialStateStr(currentStateStr);
@@ -887,7 +903,16 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
               {isSaving ? 'Saving...' : (isDirty ? 'Save Changes' : 'Saved')}
             </button>
 
-            <button onClick={onClose} className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-colors">
+            <button
+              type="button"
+              onClick={onDelete}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-[11px]"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
+
+            <button onClick={onClose} className="w-8 h-8 ml-2 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -924,6 +949,14 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
                   <div>
                     <label className={labelCls}>Document Date</label>
                     <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className={inputCls + ' text-white/80'} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Event Start</label>
+                    <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls + ' text-white/80'} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Event End</label>
+                    <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls + ' text-white/80'} />
                   </div>
                   <div className="sm:col-span-3">
                     <label className={labelCls}>Status</label>

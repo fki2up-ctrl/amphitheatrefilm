@@ -3,7 +3,6 @@ import { Calendar, Wallet, FileText, Settings } from 'lucide-react';
 
 const ITEMS = [
   { id: 'schedule',  label: 'Production Schedule', icon: Calendar },
-  { id: 'costs',     label: 'Costs & Accounting',  icon: Wallet   },
   { id: 'documents', label: 'Documents',            icon: FileText },
 ];
 

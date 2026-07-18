@@ -312,8 +312,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
         data: { label: projectName || 'Project', amount: formatMoney(total, sym), onChange: onProjectNameChange, onFocus: pushUndoState },
       });
 
-      const catKeys = Object.keys(grouped).filter(k => grouped[k].length > 0 || k !== 'Other');
-      if (catKeys.length === 0) catKeys.push('Production'); // Default category if empty
+      const catKeys = Object.keys(grouped).filter(k => grouped[k].length > 0);
 
       const spacing = 220;
       const startX = 300 - ((catKeys.length - 1) * spacing) / 2;

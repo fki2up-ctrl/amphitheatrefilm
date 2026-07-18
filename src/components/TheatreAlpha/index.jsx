@@ -15,7 +15,6 @@ import {
 } from '../../lib/theatreAlpha';
 import SidebarNav from './SidebarNav';
 import ProductionSchedule from './ProductionSchedule';
-import CostsAccounting from './CostsAccounting';
 import DocumentManager from './DocumentManager';
 import Settings from './Settings';
 
@@ -108,13 +107,6 @@ export default function TheatreAlpha() {
                 onDelete={onDelete}
               />
             )}
-            {view === 'costs' && (
-              <CostsAccounting
-                jobs={jobs}
-                settings={settings}
-                onSaveSettings={onSaveSettings}
-              />
-            )}
             {view === 'documents' && (
               <DocumentManager 
                 settings={settings} 
@@ -123,6 +115,7 @@ export default function TheatreAlpha() {
                 profiles={profiles}
                 onUpdateJob={onUpdate}
                 onCreateJob={onCreate}
+                onDeleteJob={onDelete}
               />
             )}
             {view === 'settings' && (
