@@ -803,7 +803,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
 
   const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(lineItems, discountPct, vatPct, whtPct);
   const expTotal = calcExpensesTotal(expenses);
-  const profit = grandTotal - expTotal;
+  const profit = netPayable - expTotal;
   const client = clients.find((c) => c.id === clientId);
 
   // PDF
@@ -990,7 +990,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
               {/* Profitability */}
               <section className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-4 space-y-2">
                 <p className="text-[10px] tracking-widest2 uppercase text-white/40 mb-2">Profitability</p>
-                <Row label="Total Revenue" value={formatMoney(grandTotal, sym)} />
+                <Row label="Net Payable" value={formatMoney(netPayable, sym)} />
                 <Row label="Total Expenses" value={`−${formatMoney(expTotal, sym)}`} accent="text-amber-300" />
                 <div className="border-t border-white/10 pt-2">
                   <Row label="Net Profit" value={formatMoney(profit, sym)}
