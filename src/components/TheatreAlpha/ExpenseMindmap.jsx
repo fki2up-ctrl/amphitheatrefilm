@@ -122,14 +122,20 @@ function ExpenseNode({ id, data, selected }) {
 
   const handleLabelChange = (e) => {
     const val = e.target.value;
-    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: val } } : n));
-    if (data.onChange) data.onChange();
+    setNodes(nds => {
+      const next = nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: val } } : n);
+      if (data.onChange) data.onChange(next);
+      return next;
+    });
   };
 
   const handleAmountChange = (e) => {
     const val = e.target.value;
-    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, rawAmount: val, amount: formatMoney(Number(val) || 0, data.sym || '฿') } } : n));
-    if (data.onChange) data.onChange();
+    setNodes(nds => {
+      const next = nds.map(n => n.id === id ? { ...n, data: { ...n.data, rawAmount: val, amount: formatMoney(Number(val) || 0, data.sym || '฿') } } : n);
+      if (data.onChange) data.onChange(next);
+      return next;
+    });
   };
 
   return (
@@ -268,6 +274,28 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nodes, edges, setNodes, setEdges]);
 
+  // --- 2. Sync to Parent ---
+  const syncTimer = useRef(null);
+  const triggerSync = useCallback((nds) => {
+    clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => {
+      const expNodes = nds.filter(n => n.type === 'expense');
+      const newExpenses = expNodes.map(n => ({
+        id: n.id,
+        description: n.data.label,
+        category: categorizeExpense(n.data.label),
+        amount: Number(n.data.rawAmount) || 0,
+        expense_date: n.data.date || new Date().toISOString().slice(0, 10),
+        x: n.position?.x || 0,
+        y: n.position?.y || 0
+      }));
+      onExpensesChange(newExpenses);
+    }, 100);
+  }, [onExpensesChange]);
+
+  const triggerSyncRef = useRef(triggerSync);
+  triggerSyncRef.current = triggerSync;
+
   // --- 1. Initial Build & Sync from External Changes ---
   useEffect(() => {
     // If not initialized, build the full graph (categories + root)
@@ -313,7 +341,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
           const exId = ex.id;
           newNodes.push({
             id: exId, type: 'expense', position: { x: expStartX + ei * expSpacing, y: 280 + Math.random() * 20 },
-            data: { label: ex.description || ex.expense_name, amount: formatMoney(Number(ex.amount) || 0, sym), rawAmount: Number(ex.amount) || 0, date: ex.expense_date || ex.date, onFocus: pushUndoState },
+            data: { label: ex.description || ex.expense_name, amount: formatMoney(Number(ex.amount) || 0, sym), rawAmount: Number(ex.amount) || 0, date: ex.expense_date || ex.date, onFocus: pushUndoState, onChange: (nds) => triggerSyncRef.current(nds) },
           });
 
           newEdges.push({
@@ -343,7 +371,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
         if (matched) {
           if (n.data.label !== (matched.description || matched.expense_name) || n.data.rawAmount !== Number(matched.amount)) {
             changed = true;
-            return { ...n, data: { ...n.data, label: matched.description || matched.expense_name, rawAmount: Number(matched.amount), amount: formatMoney(Number(matched.amount) || 0, sym), date: matched.expense_date || matched.date, onFocus: pushUndoState } };
+            return { ...n, data: { ...n.data, label: matched.description || matched.expense_name, rawAmount: Number(matched.amount), amount: formatMoney(Number(matched.amount) || 0, sym), date: matched.expense_date || matched.date, onFocus: pushUndoState, onChange: (nds) => triggerSyncRef.current(nds) } };
           }
         }
         return n;
@@ -408,22 +436,6 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
   // --- 2. Sync to Parent ---
   // Whenever nodes change, we trigger onExpensesChange to update the left pane
   // Debounce to prevent React state cycle thrashing
-  const syncTimer = useRef(null);
-  const triggerSync = (nds) => {
-    clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(() => {
-      const expNodes = nds.filter(n => n.type === 'expense');
-      const newExpenses = expNodes.map(n => ({
-        id: n.id,
-        description: n.data.label,
-        category: categorizeExpense(n.data.label),
-        amount: Number(n.data.rawAmount) || 0,
-        expense_date: n.data.date || new Date().toISOString().slice(0, 10)
-      }));
-      onExpensesChange(newExpenses);
-    }, 100);
-  };
-
   // --- 3. Edge Interactions ---
   const onConnect = useCallback(
     (params) => {
@@ -510,7 +522,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
       id: newId,
       type: 'expense',
       position: paneMenu.pos,
-      data: { label: '', amount: formatMoney(0, sym), rawAmount: 0, paid: false, date: new Date().toISOString().slice(0,10), onFocus: pushUndoState }
+      data: { label: '', amount: formatMoney(0, sym), rawAmount: 0, paid: false, date: new Date().toISOString().slice(0,10), onFocus: pushUndoState, onChange: (nds) => triggerSyncRef.current(nds) }
     };
     setNodes(nds => {
       const next = [...nds, newNode];

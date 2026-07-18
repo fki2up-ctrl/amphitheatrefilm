@@ -252,7 +252,6 @@ function ProfitabilityPanel({ project, clients, sym }) {
   const client = clients.find((c) => c.id === p.client_id);
   const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(p.doc_line_items || p.line_items || [], p.discount_pct, p.vat_pct, p.wht_pct);
   const expTotal = calcExpensesTotal(p.doc_expenses || p.expenses || []);
-  console.log('[DEBUG ProfitabilityPanel] doc_expenses:', p.doc_expenses, 'expTotal:', expTotal);
   const profit = grandTotal - expTotal;
   const margin = grandTotal > 0 ? Math.round((profit / grandTotal) * 100) : 0;
 

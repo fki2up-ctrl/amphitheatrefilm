@@ -102,11 +102,7 @@ export async function updateJob(id, patch, lineItems = null, expenses = null) {
         unit_price: li.unit_price !== undefined ? li.unit_price : (li.price_per_unit || 0),
         unit_name: li.unit_name || ''
       }));
-      const { error: insErr } = await supabase.from('doc_line_items').insert(itemsToInsert);
-      if (insErr) {
-        console.error('Line items insert error:', insErr);
-        throw insErr;
-      }
+      await supabase.from('doc_line_items').insert(itemsToInsert);
     }
   }
 
@@ -124,11 +120,7 @@ export async function updateJob(id, patch, lineItems = null, expenses = null) {
         x: ex.x || 0,
         y: ex.y || 0
       }));
-      const { error: insErr } = await supabase.from('doc_expenses').insert(expensesToInsert);
-      if (insErr) {
-        console.error('Expenses insert error:', insErr);
-        throw insErr;
-      }
+      await supabase.from('doc_expenses').insert(expensesToInsert);
     }
   }
 
