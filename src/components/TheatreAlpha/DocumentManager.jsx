@@ -749,6 +749,27 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
     };
   }, [dragging, mindmapDragging, formDragging, panelWidth, formWidth, mindmapWidth]);
 
+  // --- Auto-scale on Window Resize ---
+  const layoutRef = useRef({ panel: window.innerWidth * 0.96, form: (window.innerWidth * 0.96) * 0.25, mindmap: (window.innerWidth * 0.96) * 0.43 });
+  useEffect(() => {
+    layoutRef.current = { panel: panelWidth, form: formWidth, mindmap: mindmapWidth };
+  }, [panelWidth, formWidth, mindmapWidth]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const newPanelWidth = window.innerWidth * 0.96;
+      const oldPanelWidth = layoutRef.current.panel;
+      if (oldPanelWidth && newPanelWidth !== oldPanelWidth) {
+        const scale = newPanelWidth / oldPanelWidth;
+        setPanelWidth(newPanelWidth);
+        setFormWidth(layoutRef.current.form * scale);
+        setMindmapWidth(layoutRef.current.mindmap * scale);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // --- Manual Save Tracking ---
   const currentStateStr = JSON.stringify({
     client_id: clientId, project_name: refName, status,
