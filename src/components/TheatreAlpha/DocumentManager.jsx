@@ -658,7 +658,7 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
 
         {/* Totals & Footer Info */}
         <div className="mt-auto pt-[3%] border-t border-gray-200">
-          <div className="flex justify-between items-end">
+          <div className="flex justify-between items-start">
             <div className="w-[45%] text-[0.75em]">
               {profile?.bank_details && (
                 <div className="mb-[1em]">
