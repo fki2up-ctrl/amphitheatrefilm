@@ -217,7 +217,7 @@ function categorizeExpense(name) {
 // Inner Component (Wrapped in ReactFlowProvider)
 // ---------------------------------------------------------------------------
 
-function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onProjectNameChange }) {
+function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onProjectNameChange, initialLayout, onLayoutChange }) {
   const containerRef = useRef(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
 
@@ -306,8 +306,11 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
         };
       });
       onExpensesChange(newExpenses);
+      if (onLayoutChange) {
+        onLayoutChange({ nodes: nds, edges: currentEdges });
+      }
     }, 100);
-  }, [onExpensesChange]);
+  }, [onExpensesChange, onLayoutChange]);
 
   const triggerSyncRef = useRef(triggerSync);
   triggerSyncRef.current = triggerSync;
@@ -316,6 +319,22 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
   useEffect(() => {
     // If not initialized, build the full graph (categories + root)
     if (!initialized.current) {
+      if (initialLayout && initialLayout.nodes && initialLayout.edges) {
+        // Restore from saved layout
+        const restoredNodes = initialLayout.nodes.map(n => {
+          // ensure functions are re-attached
+          const dt = { ...n.data, onFocus: pushUndoState };
+          if (n.type === 'expense' || n.type === 'category') dt.onChange = (nds) => triggerSyncRef.current(nds);
+          if (n.type === 'root') dt.onChange = onProjectNameChange;
+          return { ...n, data: dt };
+        });
+        setNodes(restoredNodes);
+        setEdges(initialLayout.edges);
+        initialized.current = true;
+        setTimeout(() => fitView({ padding: 0.3 }), 50);
+        return;
+      }
+
       const total = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
       const grouped = { Crew: [], Equipment: [], Location: [], Production: [], Other: [] };
       expenses.forEach(ex => {
@@ -597,6 +616,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodesDelete={onNodesDelete}
+          onNodeDragStop={(evt, node, nds) => triggerSyncRef.current(nds)}
           onConnect={onConnect}
           onEdgeClick={onEdgeClick}
           onPaneContextMenu={onPaneContextMenu}

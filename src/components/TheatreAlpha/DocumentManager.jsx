@@ -780,6 +780,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
   const [poFileUrl, setPoFileUrl] = useState(p.po_file_url || null);
   const [lineItems, setLineItems] = useState(p.doc_line_items || p.line_items || []);
   const [expenses, setExpenses] = useState(p.doc_expenses || p.expenses || []);
+  const [mindmapLayout, setMindmapLayout] = useState(p.mindmap_layout || null);
   const [clientModalOpen, setClientModalOpen] = useState(false);
 
   // --- Resizable panel ---
@@ -864,6 +865,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
     start_at: fromLocalInput(startAt),
     end_at: fromLocalInput(endAt),
     po_number: poNumber, po_file_url: poFileUrl,
+    mindmap_layout: mindmapLayout,
     line_items: lineItems, expenses,
   });
   const [initialStateStr, setInitialStateStr] = useState(currentStateStr);
@@ -881,6 +883,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
         start_at: fromLocalInput(startAt),
         end_at: fromLocalInput(endAt),
         po_number: poNumber, po_file_url: poFileUrl,
+        mindmap_layout: mindmapLayout,
       }, lineItems, expenses);
       setInitialStateStr(currentStateStr);
     } catch (err) {
@@ -1138,11 +1141,14 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
 
             <div className="w-full flex-1 flex flex-col">
               <ExpenseMindmap
+                key={selected.id}
                 expenses={expenses}
                 projectName={refName || p.qt_number}
                 sym={sym}
                 onExpensesChange={setExpenses}
                 onProjectNameChange={setRefName}
+                initialLayout={mindmapLayout}
+                onLayoutChange={setMindmapLayout}
               />
             </div>
           </div>
