@@ -560,7 +560,7 @@ function usePreviewFont() {
   }, []);
 }
 
-function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtPct, refName, sym, overrideDocType, issueDate }) {
+function DocumentPreview({ project, client, profile, lineItems, discountPct, vatPct, whtPct, refName, sym, overrideDocType, issueDate }) {
   usePreviewFont();
 
   const { subtotal, discount, vat, grandTotal, wht, netPayable } = calcTotals(lineItems, discountPct, vatPct, whtPct);
@@ -570,9 +570,11 @@ function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtP
 
   // Use override if provided, otherwise fall back to project status
   const docTitleMap = { quotation: 'QUOTATION', purchase_order: 'PURCHASE ORDER', invoice: 'INVOICE', receipt: 'RECEIPT' };
+  const signatureLeftMap = { quotation: 'ผู้เสนอราคา', purchase_order: 'ผู้สั่งซื้อ', invoice: 'ผู้วางบิล', receipt: 'ผู้รับเงิน' };
   const statusToKey = { draft: 'quotation', po: 'purchase_order', invoiced: 'invoice', paid: 'receipt' };
   const activeKey = overrideDocType || statusToKey[project.status] || 'quotation';
   const docTitle = docTitleMap[activeKey] || 'QUOTATION';
+  const leftSignatureLabel = signatureLeftMap[activeKey] || 'ผู้เสนอราคา';
 
   // Doc number prefix
   const prefixMap = { quotation: 'QT', purchase_order: 'PO', invoice: 'INV', receipt: 'REC' };
@@ -588,8 +590,13 @@ function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtP
         {/* Header */}
         <div className="flex items-start justify-between mb-[5%]">
           <div>
-            <h1 className="text-[2em] font-bold tracking-tight text-gray-900 leading-none">AMPHITHEATRE</h1>
-            <p className="text-[0.9em] text-gray-400 tracking-[0.15em] uppercase mt-[0.3em]">Film Production</p>
+            <h1 className="text-[1.8em] font-bold tracking-tight text-gray-900 leading-none">{profile?.company_name || 'AMPHITHEATRE Film Production'}</h1>
+            {profile?.address && <p className="text-[0.8em] text-gray-500 mt-[0.5em] max-w-[280px] leading-snug">{profile.address}</p>}
+            <p className="text-[0.75em] text-gray-500 mt-[0.2em]">
+              {profile?.tax_id ? `Tax ID: ${profile.tax_id}` : ''}
+              {profile?.email ? ` • ${profile.email}` : ''}
+              {profile?.phone ? ` • ${profile.phone}` : ''}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-[1.6em] font-semibold tracking-[0.08em] text-gray-700">{docTitle}</p>
@@ -644,10 +651,25 @@ function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtP
           </table>
         </div>
 
-        {/* Totals */}
+        {/* Totals & Footer Info */}
         <div className="mt-auto pt-[3%] border-t border-gray-200">
-          <div className="flex justify-end">
-            <div className="w-[55%] space-y-[0.3em] text-[0.9em]">
+          <div className="flex justify-between items-end">
+            <div className="w-[45%] text-[0.75em]">
+              {profile?.bank_details && (
+                <div className="mb-[1em]">
+                  <p className="font-semibold text-gray-800 mb-[0.2em]">การชำระเงิน / Payment</p>
+                  <p className="text-gray-600 whitespace-pre-line leading-relaxed">{profile.bank_details}</p>
+                </div>
+              )}
+              <div className="border border-blue-600/30 border-dashed rounded p-[0.8em] text-gray-600 leading-relaxed bg-blue-50/30">
+                <p className="font-semibold text-gray-800 mb-[0.3em]">Term of Conditions</p>
+                <p>1. สินค้าหรือบริการในรายการนี้ไม่รับคืนหรือเปลี่ยนแปลงหลังจากรับสินค้าหรือบริการ</p>
+                <p>2. กรุณาชำระเงินภายใน 30 วัน มิฉะนั้นจำเป็นต้องคิดดอกเบี้ย 1.5% ต่อเดือน</p>
+                <p>3. หลังจากชำระเงินแล้วกรุณานำส่งใบสำคัญจ่ายตามที่อยู่และอีเมลที่ระบุไว้ข้างต้น</p>
+              </div>
+            </div>
+            
+            <div className="w-[48%] space-y-[0.3em] text-[0.9em]">
               <TotalRow label="Subtotal" value={`${sym}${fmtNum(subtotal)}`} />
               {discount > 0 && <TotalRow label={`Discount (${discountPct}%)`} value={`−${sym}${fmtNum(discount)}`} light />}
               {vat > 0 && <TotalRow label={`VAT (${vatPct}%)`} value={`${sym}${fmtNum(vat)}`} light />}
@@ -672,8 +694,24 @@ function DocumentPreview({ project, client, lineItems, discountPct, vatPct, whtP
           </div>
         </div>
 
-        <div className="mt-[4%] pt-[2%] border-t border-gray-100 text-center">
-          <p className="text-[0.75em] text-gray-400">Thank you for your business · Payment terms: Net 30</p>
+        {/* Signature Blocks */}
+        <div className="mt-[4%] pt-[3%] grid grid-cols-2 gap-[15%] text-center text-[0.85em] font-semibold text-gray-800">
+          <div>
+            <p className="mb-[3.5em]">{leftSignatureLabel}</p>
+            <div className="flex flex-col items-center justify-end h-[4em] mb-[0.5em] relative">
+              {profile?.signature_url && (
+                <img src={profile.signature_url} alt="Signature" className="absolute bottom-1 max-h-full max-w-full object-contain" />
+              )}
+            </div>
+            <p className="font-normal">( {profile?.seller_name || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
+          </div>
+          <div>
+            <p className="mb-[3.5em]">ผู้อนุมัติ</p>
+            <div className="flex flex-col items-center justify-end h-[4em] mb-[0.5em]">
+              <div className="w-full border-b border-gray-400 border-dashed mb-2" />
+            </div>
+            <p className="font-normal">( {'\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
+          </div>
         </div>
       </div>
     </div>
@@ -1113,6 +1151,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
                   <DocumentPreview
                     project={{ ...p, status }}
                     client={client}
+                    profile={profiles?.find(pr => pr.is_default) || profiles?.[0]}
                     lineItems={lineItems}
                     discountPct={discountPct}
                     vatPct={vatPct}

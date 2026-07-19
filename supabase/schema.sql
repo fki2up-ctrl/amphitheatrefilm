@@ -208,6 +208,9 @@ create table if not exists public.alpha_profiles (
   email text,
   phone text,
   logo_url text,
+  seller_name text,
+  signature_url text,
+  bank_details text,
   is_default boolean default false,
   created_at timestamptz not null default now()
 );

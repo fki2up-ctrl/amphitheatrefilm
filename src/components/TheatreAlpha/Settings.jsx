@@ -8,6 +8,7 @@ import {
   User, Building2, Palette, Plus, X, Trash2, Upload, Check, Pencil, Save, Loader2
 } from 'lucide-react';
 import { upsertProfile, deleteProfile, upsertClient, deleteClient } from '../../lib/theatreAlpha';
+import { uploadPOFile } from '../../lib/documents';
 
 // ---------------------------------------------------------------------------
 // Mock profiles & themes
@@ -181,6 +182,9 @@ function ProfilesTab({ profiles, setProfiles, inputCls, labelCls }) {
       email: '',
       phone: '',
       logo_url: null,
+      seller_name: '',
+      signature_url: null,
+      bank_details: '',
       is_default: profiles.length === 0,
     };
     setProfiles((prev) => [...prev, newP]);
