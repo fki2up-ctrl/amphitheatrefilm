@@ -253,7 +253,6 @@ create table if not exists public.doc_quotations (
   po_number text,
   po_file_url text,
   issue_date date,
-  mindmap_layout jsonb,
   created_at timestamptz not null default now()
 );
 alter table public.doc_quotations enable row level security;
