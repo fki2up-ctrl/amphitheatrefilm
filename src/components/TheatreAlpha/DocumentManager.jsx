@@ -570,11 +570,15 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
 
   // Use override if provided, otherwise fall back to project status
   const docTitleMap = { quotation: 'QUOTATION', purchase_order: 'PURCHASE ORDER', invoice: 'INVOICE', receipt: 'RECEIPT' };
+  const docTitleThaiMap = { quotation: 'ใบเสนอราคา', purchase_order: 'ใบสั่งซื้อ', invoice: 'ใบแจ้งหนี้', receipt: 'ใบเสร็จรับเงิน' };
   const signatureLeftMap = { quotation: 'ผู้เสนอราคา', purchase_order: 'ผู้สั่งซื้อ', invoice: 'ผู้วางบิล', receipt: 'ผู้รับเงิน' };
+  const signatureLeftEnMap = { quotation: 'Proposer', purchase_order: 'Buyer', invoice: 'Biller', receipt: 'Payee' };
   const statusToKey = { draft: 'quotation', po: 'purchase_order', invoiced: 'invoice', paid: 'receipt' };
   const activeKey = overrideDocType || statusToKey[project.status] || 'quotation';
   const docTitle = docTitleMap[activeKey] || 'QUOTATION';
+  const docTitleThai = docTitleThaiMap[activeKey] || 'ใบเสนอราคา';
   const leftSignatureLabel = signatureLeftMap[activeKey] || 'ผู้เสนอราคา';
+  const leftSignatureLabelEn = signatureLeftEnMap[activeKey] || 'Proposer';
 
   // Doc number prefix
   const prefixMap = { quotation: 'QT', purchase_order: 'PO', invoice: 'INV', receipt: 'REC' };
@@ -599,8 +603,9 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[1.6em] font-semibold tracking-[0.08em] text-gray-700">{docTitle}</p>
-            <p className="text-[0.85em] text-gray-400 mt-[0.2em] font-mono">{docNumber}</p>
+            <p className="text-[1.6em] font-semibold tracking-[0.08em] text-gray-700 leading-none">{docTitle}</p>
+            <p className="text-[1.1em] font-medium text-gray-500 mt-[0.3em]">{docTitleThai}</p>
+            <p className="text-[0.85em] text-gray-400 mt-[0.6em] font-mono">{docNumber}</p>
           </div>
         </div>
 
@@ -693,22 +698,26 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
         </div>
 
         {/* Signature Blocks */}
-        <div className="mt-[4%] pt-[3%] grid grid-cols-2 gap-[15%] text-center text-[0.85em] font-semibold text-gray-800">
-          <div>
-            <p className="mb-[3.5em]">{leftSignatureLabel}</p>
-            <div className="flex flex-col items-center justify-end h-[4em] mb-[0.5em] relative">
-              {profile?.signature_url && (
-                <img src={profile.signature_url} alt="Signature" className="absolute bottom-1 max-h-full max-w-full object-contain" />
-              )}
+        <div className="mt-[4%] pt-[3%] flex justify-end">
+          <div className="w-[60%] flex justify-between text-center text-[0.85em] font-semibold text-gray-800">
+            <div className="w-[45%]">
+              <p className="mb-0">{leftSignatureLabelEn}</p>
+              <p className="mb-[2.5em] text-[0.9em] text-gray-600">{leftSignatureLabel}</p>
+              <div className="flex flex-col items-center justify-end h-[4em] mb-[0.5em] relative">
+                {profile?.signature_url && (
+                  <img src={profile.signature_url} alt="Signature" className="absolute bottom-1 max-h-full max-w-full object-contain" />
+                )}
+              </div>
+              <p className="font-normal">( {profile?.seller_name || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
             </div>
-            <p className="font-normal">( {profile?.seller_name || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
-          </div>
-          <div>
-            <p className="mb-[3.5em]">ผู้อนุมัติ</p>
-            <div className="flex flex-col items-center justify-end h-[4em] mb-[0.5em]">
-              <div className="w-full border-b border-gray-400 border-dashed mb-2" />
+            <div className="w-[45%]">
+              <p className="mb-0">Approver</p>
+              <p className="mb-[2.5em] text-[0.9em] text-gray-600">ผู้อนุมัติ</p>
+              <div className="flex flex-col items-center justify-end h-[4em] mb-[0.5em]">
+                <div className="w-full border-b border-gray-400 border-dashed mb-2" />
+              </div>
+              <p className="font-normal">( {'\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
             </div>
-            <p className="font-normal">( {'\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
           </div>
         </div>
       </div>
