@@ -661,11 +661,9 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
                   <p className="text-gray-600 whitespace-pre-line leading-relaxed">{profile.bank_details}</p>
                 </div>
               )}
-              <div className="border border-blue-600/30 border-dashed rounded p-[0.8em] text-gray-600 leading-relaxed bg-blue-50/30">
+              <div className="border border-blue-600/30 border-dashed rounded p-[0.8em] text-gray-600 leading-relaxed bg-blue-50/30 whitespace-pre-line">
                 <p className="font-semibold text-gray-800 mb-[0.3em]">Term of Conditions</p>
-                <p>1. สินค้าหรือบริการในรายการนี้ไม่รับคืนหรือเปลี่ยนแปลงหลังจากรับสินค้าหรือบริการ</p>
-                <p>2. กรุณาชำระเงินภายใน 30 วัน มิฉะนั้นจำเป็นต้องคิดดอกเบี้ย 1.5% ต่อเดือน</p>
-                <p>3. หลังจากชำระเงินแล้วกรุณานำส่งใบสำคัญจ่ายตามที่อยู่และอีเมลที่ระบุไว้ข้างต้น</p>
+                {profile?.terms_conditions || "1. สินค้าหรือบริการในรายการนี้ไม่รับคืนหรือเปลี่ยนแปลงหลังจากรับสินค้าหรือบริการ\n2. กรุณาชำระเงินภายใน 30 วัน มิฉะนั้นจำเป็นต้องคิดดอกเบี้ย 1.5% ต่อเดือน\n3. หลังจากชำระเงินแล้วกรุณานำส่งใบสำคัญจ่ายตามที่อยู่และอีเมลที่ระบุไว้ข้างต้น"}
               </div>
             </div>
             
@@ -746,6 +744,7 @@ function fromLocalInput(local) {
 
 function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onDelete, sym }) {
   const [clientId, setClientId] = useState(p.client_id || '');
+  const [profileId, setProfileId] = useState(p.profile_id || '');
   const [refName, setRefName] = useState(p.project_name || p.reference_name || '');
   const [status, setStatus] = useState(p.status || 'draft');
   const [discountPct, setDiscountPct] = useState(p.discount_pct || 0);
@@ -836,7 +835,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
 
   // --- Manual Save Tracking ---
   const currentStateStr = JSON.stringify({
-    client_id: clientId, project_name: refName, status,
+    client_id: clientId, profile_id: profileId, project_name: refName, status,
     discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
     issue_date: issueDate,
     start_at: fromLocalInput(startAt),
@@ -853,7 +852,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
     setIsSaving(true);
     try {
       await onUpdate({
-        client_id: clientId, project_name: refName, status,
+        client_id: clientId, profile_id: profileId || null, project_name: refName, status,
         discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
         issue_date: issueDate || null,
         start_at: fromLocalInput(startAt),
@@ -991,6 +990,13 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
                     </button>
                   </div>
                   <ClientCombobox clients={clients} value={clientId} onChange={setClientId} onCreateClient={(name) => alert('Please add clients via Settings.')} />
+                </div>
+                <div>
+                  <label className={labelCls}>Issuer Profile</label>
+                  <select value={profileId} onChange={(e) => setProfileId(e.target.value)} className={inputCls + ' appearance-none'}>
+                    <option value="">Default Profile</option>
+                    {profiles.map(pr => <option key={pr.id} value={pr.id}>{pr.company_name}</option>)}
+                  </select>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
@@ -1151,7 +1157,7 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
                   <DocumentPreview
                     project={{ ...p, status }}
                     client={client}
-                    profile={profiles?.find(pr => pr.is_default) || profiles?.[0]}
+                    profile={profileId ? profiles.find(pr => pr.id === profileId) : (profiles?.find(pr => pr.is_default) || profiles?.[0])}
                     lineItems={lineItems}
                     discountPct={discountPct}
                     vatPct={vatPct}

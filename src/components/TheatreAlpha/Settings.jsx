@@ -185,6 +185,7 @@ function ProfilesTab({ profiles, setProfiles, inputCls, labelCls }) {
       seller_name: '',
       signature_url: null,
       bank_details: '',
+      terms_conditions: '',
       is_default: profiles.length === 0,
     };
     setProfiles((prev) => [...prev, newP]);
@@ -262,12 +263,45 @@ function ProfilesTab({ profiles, setProfiles, inputCls, labelCls }) {
                   <input value={p.phone} onChange={(e) => updateField(p.id, 'phone', e.target.value)} className={inputCls} />
                 </div>
               </div>
-              <div>
-                <label className={labelCls}>Logo</label>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-white/15 bg-white/[0.02] cursor-pointer hover:border-white/30 transition-colors">
-                  <Upload className="w-4 h-4 text-white/30" />
-                  <span className="text-xs text-white/40">Drop image or click to browse</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className={labelCls}>Seller Full Name (for Signature)</label>
+                  <input value={p.seller_name || ''} onChange={(e) => updateField(p.id, 'seller_name', e.target.value)} className={inputCls} placeholder="e.g. John Doe" />
                 </div>
+                <div>
+                  <label className={labelCls}>Signature Image</label>
+                  {p.signature_url ? (
+                    <div className="relative w-full h-[38px] bg-white/5 border border-white/10 rounded-md flex items-center justify-between px-3">
+                      <span className="text-xs text-white/70 truncate">Signature uploaded</span>
+                      <button onClick={() => updateField(p.id, 'signature_url', null)} className="text-white/40 hover:text-red-400">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer w-full h-[38px] bg-white/5 border border-white/10 border-dashed rounded-md flex items-center justify-center gap-2 hover:bg-white/10 transition-colors">
+                      <Upload className="w-3.5 h-3.5 text-white/50" />
+                      <span className="text-[11px] text-white/50">Upload Signature</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const url = await uploadPOFile(file);
+                            updateField(p.id, 'signature_url', url);
+                          } catch (err) { alert('Upload failed'); }
+                        }
+                      }} />
+                    </label>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Bank Transfer Details</label>
+                <textarea rows={2} value={p.bank_details || ''} onChange={(e) => updateField(p.id, 'bank_details', e.target.value)} className={inputCls} placeholder="e.g. SCB 123-456-789 Name: John Doe" />
+              </div>
+              <div>
+                <label className={labelCls}>Term of Conditions</label>
+                <textarea rows={3} value={p.terms_conditions || ''} onChange={(e) => updateField(p.id, 'terms_conditions', e.target.value)} className={inputCls} placeholder="1. สินค้าหรือบริการในรายการนี้ไม่รับคืน...&#10;2. กรุณาชำระเงินภายใน 30 วัน..." />
               </div>
             </motion.div>
           )}

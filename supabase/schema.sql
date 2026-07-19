@@ -211,6 +211,7 @@ create table if not exists public.alpha_profiles (
   seller_name text,
   signature_url text,
   bank_details text,
+  terms_conditions text,
   is_default boolean default false,
   created_at timestamptz not null default now()
 );
@@ -239,6 +240,7 @@ create table if not exists public.doc_quotations (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid references auth.users(id),
   client_id uuid references public.alpha_clients(id) on delete set null,
+  profile_id uuid references public.alpha_profiles(id) on delete set null,
   qt_number text not null,
   project_name text,
   status text default 'draft', -- draft, quoted, po_received, invoiced, paid
