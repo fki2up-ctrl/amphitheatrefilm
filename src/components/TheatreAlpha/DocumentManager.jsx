@@ -672,14 +672,14 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
               </div>
             </div>
             
-            <div className="w-[48%] space-y-[0.3em] text-[0.9em]">
+            <div className="w-[48%] space-y-[0.3em] text-[0.85em]">
               <TotalRow label="Subtotal" value={`${sym}${fmtNum(subtotal)}`} />
               {discount > 0 && <TotalRow label={`Discount (${discountPct}%)`} value={`−${sym}${fmtNum(discount)}`} light />}
               {vat > 0 && <TotalRow label={`VAT (${vatPct}%)`} value={`${sym}${fmtNum(vat)}`} light />}
               <div className="border-t-2 border-gray-800 pt-[0.4em] mt-[0.4em]">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-gray-900 text-[1.1em]">Grand Total</span>
-                  <span className="font-bold text-gray-900 text-[1.2em] font-mono">{sym}{fmtNum(grandTotal)}</span>
+                  <span className="font-bold text-gray-900 text-[0.95em]">Grand Total</span>
+                  <span className="font-bold text-gray-900 text-[1em] font-mono">{sym}{fmtNum(grandTotal)}</span>
                 </div>
               </div>
               {wht > 0 && (
@@ -687,8 +687,8 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
                   <TotalRow label={`WHT (${whtPct}%)`} value={`−${sym}${fmtNum(wht)}`} light />
                   <div className="border-t border-gray-300 pt-[0.3em] mt-[0.2em]">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-700 text-[1em]">Net Payable</span>
-                      <span className="font-semibold text-gray-700 text-[1.1em] font-mono">{sym}{fmtNum(netPayable)}</span>
+                      <span className="font-semibold text-gray-700 text-[0.9em]">Net Payable</span>
+                      <span className="font-semibold text-gray-700 text-[0.95em] font-mono">{sym}{fmtNum(netPayable)}</span>
                     </div>
                   </div>
                 </>
@@ -707,8 +707,14 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
                 {profile?.signature_url && (
                   <img src={profile.signature_url} alt="Signature" className="absolute bottom-1 max-h-full max-w-full object-contain" />
                 )}
+                {/* Left side signature line (if they want to sign physically) */}
+                {!profile?.signature_url && <div className="w-full border-b border-gray-400 border-dashed mb-2" />}
               </div>
-              <p className="font-normal">( {profile?.seller_name || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
+              <div className="w-full flex items-center justify-between font-normal">
+                <span>(</span>
+                <span className="truncate mx-2 text-gray-700">{profile?.seller_name || ''}</span>
+                <span>)</span>
+              </div>
             </div>
             <div className="w-[45%]">
               <p className="mb-0">Approver</p>
@@ -716,7 +722,11 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
               <div className="flex flex-col items-center justify-end h-[4em] mb-[0.5em]">
                 <div className="w-full border-b border-gray-400 border-dashed mb-2" />
               </div>
-              <p className="font-normal">( {'\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'} )</p>
+              <div className="w-full flex items-center justify-between font-normal">
+                <span>(</span>
+                <span className="truncate mx-2 text-gray-700"></span>
+                <span>)</span>
+              </div>
             </div>
           </div>
         </div>
