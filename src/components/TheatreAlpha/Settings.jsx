@@ -263,7 +263,6 @@ function ProfilesTab({ profiles, setProfiles, inputCls, labelCls }) {
                   <input value={p.phone} onChange={(e) => updateField(p.id, 'phone', e.target.value)} className={inputCls} />
                 </div>
               </div>
-              </div>
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className={labelCls}>Seller Full Name (for Signature)</label>
