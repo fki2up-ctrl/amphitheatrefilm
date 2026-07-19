@@ -74,8 +74,11 @@ function CategoryNode({ id, data, selected }) {
   
   const handleLabelChange = (e) => {
     const val = e.target.value;
-    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: val } } : n));
-    if (data.onChange) data.onChange(val);
+    setNodes(nds => {
+      const next = nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: val } } : n);
+      if (data.onChange) data.onChange(next);
+      return next;
+    });
   };
 
   return (
@@ -226,6 +229,10 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
   const [paneMenu, setPaneMenu] = useState(null);
   const [nodeMenu, setNodeMenu] = useState(null); // { nodeId, x, y }
 
+  // --- Sync References ---
+  const edgesRef = useRef(edges);
+  useEffect(() => { edgesRef.current = edges; }, [edges]);
+
   // --- Undo / Redo ---
   const undoStack = useRef([]);
   const redoStack = useRef([]);
@@ -253,7 +260,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
             isUndoRedoAction.current = true;
             setNodes(next.nodes);
             setEdges(next.edges);
-            triggerSync(next.nodes);
+            triggerSyncRef.current(next.nodes);
             setTimeout(() => isUndoRedoAction.current = false, 50);
           }
         } else {
@@ -264,7 +271,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
             isUndoRedoAction.current = true;
             setNodes(prev.nodes);
             setEdges(prev.edges);
-            triggerSync(prev.nodes);
+            triggerSyncRef.current(prev.nodes);
             setTimeout(() => isUndoRedoAction.current = false, 50);
           }
         }
@@ -279,16 +286,25 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
   const triggerSync = useCallback((nds) => {
     clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(() => {
+      const currentEdges = edgesRef.current;
       const expNodes = nds.filter(n => n.type === 'expense');
-      const newExpenses = expNodes.map(n => ({
-        id: n.id,
-        description: n.data.label,
-        category: categorizeExpense(n.data.label),
-        amount: Number(n.data.rawAmount) || 0,
-        expense_date: n.data.date || new Date().toISOString().slice(0, 10),
-        x: n.position?.x || 0,
-        y: n.position?.y || 0
-      }));
+      const newExpenses = expNodes.map(n => {
+        const edge = currentEdges.find(e => e.target === n.id);
+        let catName = categorizeExpense(n.data.label);
+        if (edge) {
+          const catNode = nds.find(c => c.id === edge.source && c.type === 'category');
+          if (catNode && catNode.data.label) catName = catNode.data.label;
+        }
+        return {
+          id: n.id,
+          description: n.data.label,
+          category: catName,
+          amount: Number(n.data.rawAmount) || 0,
+          expense_date: n.data.date || new Date().toISOString().slice(0, 10),
+          x: n.position?.x || 0,
+          y: n.position?.y || 0
+        };
+      });
       onExpensesChange(newExpenses);
     }, 100);
   }, [onExpensesChange]);
@@ -302,7 +318,12 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
     if (!initialized.current) {
       const total = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
       const grouped = { Crew: [], Equipment: [], Location: [], Production: [], Other: [] };
-      expenses.forEach(ex => grouped[categorizeExpense(ex.description || ex.expense_name)].push(ex));
+      expenses.forEach(ex => {
+        let cat = ex.category;
+        if (!cat) cat = categorizeExpense(ex.description || ex.expense_name);
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(ex);
+      });
 
       const newNodes = [];
       const newEdges = [];
@@ -324,7 +345,7 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
 
         newNodes.push({
           id: catId, type: 'category', position: { x: startX + ci * spacing, y: 150 },
-          data: { label: cat, amount: formatMoney(catTotal, sym), onFocus: pushUndoState },
+          data: { label: cat, amount: formatMoney(catTotal, sym), onFocus: pushUndoState, onChange: (nds) => triggerSyncRef.current(nds) },
         });
 
         newEdges.push({
@@ -439,16 +460,26 @@ function ExpenseMindmapInner({ expenses, projectName, sym, onExpensesChange, onP
   const onConnect = useCallback(
     (params) => {
       pushUndoState();
-      setEdges((eds) => addEdge({ ...params, style: { stroke: 'rgba(255,255,255,0.1)' } }, eds));
+      setEdges((eds) => {
+        const nextEdges = addEdge({ ...params, style: { stroke: 'rgba(255,255,255,0.1)' } }, eds);
+        edgesRef.current = nextEdges;
+        setNodes(nds => { triggerSyncRef.current(nds); return nds; });
+        return nextEdges;
+      });
     },
-    [setEdges, pushUndoState]
+    [setEdges, pushUndoState, setNodes]
   );
 
   const onEdgeClick = useCallback((evt, edge) => {
     evt.stopPropagation();
     pushUndoState();
-    setEdges(eds => eds.filter(e => e.id !== edge.id));
-  }, [setEdges, pushUndoState]);
+    setEdges(eds => {
+      const nextEdges = eds.filter(e => e.id !== edge.id);
+      edgesRef.current = nextEdges;
+      setNodes(nds => { triggerSyncRef.current(nds); return nds; });
+      return nextEdges;
+    });
+  }, [setEdges, pushUndoState, setNodes]);
 
   const onNodesDelete = useCallback((deleted) => {
     pushUndoState();

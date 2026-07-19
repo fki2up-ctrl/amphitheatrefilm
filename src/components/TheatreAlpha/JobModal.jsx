@@ -11,16 +11,17 @@ import { X, Trash2, Loader2 } from 'lucide-react';
 
 const STATUSES = ['draft', 'quoted', 'po_received', 'invoiced', 'paid'];
 
-// Convert ISO string to local "YYYY-MM-DDTHH:mm" for <input type=datetime-local>.
+// Convert ISO string to local "YYYY-MM-DD" for <input type=date>.
 function toLocalInput(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 function fromLocalInput(local) {
   if (!local) return null;
-  return new Date(local).toISOString();
+  // Use T00:00:00 to assume midnight in the local timezone
+  return new Date(local + 'T00:00:00').toISOString();
 }
 
 export default function JobModal({ open, job, defaultStart, onClose, onSave, onDelete, currencySymbol, clients = [] }) {
@@ -131,13 +132,13 @@ export default function JobModal({ open, job, defaultStart, onClose, onSave, onD
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Start">
-                <input type="datetime-local" required
+                <input type="date" required
                   value={toLocalInput(form.start_at)}
                   onChange={(e) => set({ start_at: fromLocalInput(e.target.value) })}
                   className={inputCls} />
               </Field>
               <Field label="End">
-                <input type="datetime-local" required
+                <input type="date" required
                   value={toLocalInput(form.end_at)}
                   onChange={(e) => set({ end_at: fromLocalInput(e.target.value) })}
                   className={inputCls} />

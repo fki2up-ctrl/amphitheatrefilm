@@ -232,6 +232,7 @@ export default function DocumentManager({ settings, jobs = [], clients = [], pro
       <AnimatePresence>
         {editorOpen && selected && (
           <DocumentEditor
+            key={selected.id}
             p={selected}
             clients={clients}
             profiles={profiles}
@@ -688,6 +689,19 @@ function TotalRow({ label, value, light }) {
   );
 }
 
+// Convert ISO string to local "YYYY-MM-DD" for <input type=date>.
+function toLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function fromLocalInput(local) {
+  if (!local) return null;
+  // Use T00:00:00 to assume midnight in the local timezone
+  return new Date(local + 'T00:00:00').toISOString();
+}
+
 // ---------------------------------------------------------------------------
 // DocumentEditor — split-view (left form + right preview & mindmap)
 // ---------------------------------------------------------------------------
@@ -700,8 +714,8 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
   const [vatPct, setVatPct] = useState(p.vat_pct !== undefined ? p.vat_pct : 7);
   const [whtPct, setWhtPct] = useState(p.wht_pct || 0);
   const [issueDate, setIssueDate] = useState(p.issue_date || (p.created_at ? p.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)));
-  const [startAt, setStartAt] = useState(p.start_at ? p.start_at.slice(0, 16) : '');
-  const [endAt, setEndAt] = useState(p.end_at ? p.end_at.slice(0, 16) : '');
+  const [startAt, setStartAt] = useState(toLocalInput(p.start_at));
+  const [endAt, setEndAt] = useState(toLocalInput(p.end_at));
   const [poNumber, setPoNumber] = useState(p.po_number || '');
   const [poFileUrl, setPoFileUrl] = useState(p.po_file_url || null);
   const [lineItems, setLineItems] = useState(p.doc_line_items || p.line_items || []);
@@ -787,8 +801,8 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
     client_id: clientId, project_name: refName, status,
     discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
     issue_date: issueDate,
-    start_at: startAt ? new Date(startAt).toISOString() : null,
-    end_at: endAt ? new Date(endAt).toISOString() : null,
+    start_at: fromLocalInput(startAt),
+    end_at: fromLocalInput(endAt),
     po_number: poNumber, po_file_url: poFileUrl,
     line_items: lineItems, expenses,
   });
@@ -804,8 +818,8 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
         client_id: clientId, project_name: refName, status,
         discount_pct: discountPct, vat_pct: vatPct, wht_pct: whtPct,
         issue_date: issueDate || null,
-        start_at: startAt ? new Date(startAt).toISOString() : null,
-        end_at: endAt ? new Date(endAt).toISOString() : null,
+        start_at: fromLocalInput(startAt),
+        end_at: fromLocalInput(endAt),
         po_number: poNumber, po_file_url: poFileUrl,
       }, lineItems, expenses);
       setInitialStateStr(currentStateStr);
@@ -952,11 +966,11 @@ function DocumentEditor({ p, clients, profiles, settings, onUpdate, onClose, onD
                   </div>
                   <div>
                     <label className={labelCls}>Event Start</label>
-                    <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls + ' text-white/80'} />
+                    <input type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls + ' text-white/80'} />
                   </div>
                   <div>
                     <label className={labelCls}>Event End</label>
-                    <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls + ' text-white/80'} />
+                    <input type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls + ' text-white/80'} />
                   </div>
                   <div className="sm:col-span-3">
                     <label className={labelCls}>Status</label>
