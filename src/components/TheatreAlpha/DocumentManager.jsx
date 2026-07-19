@@ -666,10 +666,6 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
                   <p className="text-gray-600 whitespace-pre-line leading-relaxed">{profile.bank_details}</p>
                 </div>
               )}
-              <div className="border border-blue-600/30 border-dashed rounded p-[0.8em] text-gray-600 leading-relaxed bg-blue-50/30 whitespace-pre-line">
-                <p className="font-semibold text-gray-800 mb-[0.3em]">Term of Conditions</p>
-                {profile?.terms_conditions || "1. สินค้าหรือบริการในรายการนี้ไม่รับคืนหรือเปลี่ยนแปลงหลังจากรับสินค้าหรือบริการ\n2. กรุณาชำระเงินภายใน 30 วัน มิฉะนั้นจำเป็นต้องคิดดอกเบี้ย 1.5% ต่อเดือน\n3. หลังจากชำระเงินแล้วกรุณานำส่งใบสำคัญจ่ายตามที่อยู่และอีเมลที่ระบุไว้ข้างต้น"}
-              </div>
             </div>
             
             <div className="w-[48%] space-y-[0.3em] text-[0.85em]">
@@ -728,6 +724,14 @@ function DocumentPreview({ project, client, profile, lineItems, discountPct, vat
                 <span>)</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Term of Conditions at the bottom */}
+        <div className="mt-auto pt-[4%] text-[0.75em]">
+          <div className="border border-blue-600/30 border-dashed rounded p-[0.8em] text-gray-600 leading-relaxed bg-blue-50/30 whitespace-pre-line">
+            <p className="font-semibold text-gray-800 mb-[0.3em]">Term of Conditions</p>
+            {profile?.terms_conditions || "1. สินค้าหรือบริการในรายการนี้ไม่รับคืนหรือเปลี่ยนแปลงหลังจากรับสินค้าหรือบริการ\n2. กรุณาชำระเงินภายใน 30 วัน มิฉะนั้นจำเป็นต้องคิดดอกเบี้ย 1.5% ต่อเดือน\n3. หลังจากชำระเงินแล้วกรุณานำส่งใบสำคัญจ่ายตามที่อยู่และอีเมลที่ระบุไว้ข้างต้น"}
           </div>
         </div>
       </div>
